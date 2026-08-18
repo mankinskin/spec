@@ -29,3 +29,12 @@ pub enum SpecError {
     #[error("serialization error: {0}")]
     Serialization(String),
 }
+
+impl memory_kernel::storage::NotFoundError for SpecError {
+    fn is_workspace_not_found(&self) -> bool {
+        matches!(
+            self,
+            SpecError::Storage(memory_kernel::error::StorageError::WorkspaceNotFound { .. })
+        )
+    }
+}
