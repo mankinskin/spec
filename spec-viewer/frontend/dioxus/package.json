@@ -1,0 +1,13 @@
+{
+  "name": "spec-viewer-dioxus-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test:e2e:release": "playwright test -c playwright.release.config.ts",
+    "test:e2e:release:headed": "playwright test -c playwright.release.config.ts --headed",
+    "test:e2e:release:ui": "playwright test -c playwright.release.config.ts --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.43.0"
+  }
+}

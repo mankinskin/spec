@@ -1,0 +1,314 @@
+/* spec-viewer-overrides.css — per-viewer tweaks loaded after the shared
+   modular CSS bundle.  Add only rules that should NOT apply to other
+   viewers; anything reusable belongs upstream in
+   tools/viewer/viewer-api/frontend/dioxus/public/css/. */
+
+/* Keep the route header above the sidebar/content flex row so header controls
+  remain clickable while the spec list is open on detail and list screens. */
+.app > .header {
+  position: relative;
+  z-index: 20;
+}
+
+.app > .main-layout .sidebar {
+  z-index: 18;
+}
+
+.app > .main-layout .sidebar-overlay.visible {
+  z-index: 19;
+}
+
+
+/* ── SpecDetailPage wrapper ─────────────────────────────────────────────────── */
+
+/* The detail route wraps content in the standard `.app` shell.  Make the
+   header opaque on this route so the back button + breadcrumbs sit on a
+   solid surface instead of the animated WgpuOverlay bleeding through. */
+.app:has(> .main-layout > .spec-detail-page) > .header {
+  background: var(--bg-secondary, #161b22);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Standalone detail route: render on a solid surface so the spec body
+   isn't competing with the animated WgpuOverlay shown behind it.  Fills
+   the entire `.main-layout` flex row. */
+.spec-detail-page {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: var(--bg-primary, #0d1117);
+  overflow: hidden;
+}
+
+/* Cancel the translucent panel-bg on the inner detail panel when it's
+   embedded directly under .spec-detail-page (i.e. the dedicated route).
+   The panel inherits the solid surface from its parent instead. */
+.spec-detail-page > .spec-detail {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ── SpecTreePage ───────────────────────────────────────────────────────────── */
+
+.spec-tree-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.spec-tree-page__header {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.spec-tree-page__title {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.spec-tree-page__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-md);
+}
+
+
+/* ── SpecDetailPage header (back button + breadcrumbs) ─────────────────────── */
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  margin-right: var(--spacing-sm);
+  background: var(--bg-secondary, rgba(22, 27, 34, 0.95));
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-back:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.08));
+}
+
+.btn-nav-link {
+  padding: 4px 10px;
+  margin-left: var(--spacing-xs);
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.btn-nav-link:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.spec-detail__breadcrumbs {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── SpecGraphPage shell ───────────────────────────────────────────────────── */
+
+/* Make the header opaque on the graph route as well \u2014 same reason as
+   the detail route: the WgpuOverlay shines through a translucent panel
+   and washes out the back button + title. */
+.spec-graph-shell > .header {
+  background: var(--bg-secondary, #161b22);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.spec-graph-page {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Spec preview sidebar (graph view) ─────────────────────────────────────── */
+
+.spec-preview {
+  position: absolute;
+  top: var(--spacing-sm, 8px);
+  right: var(--spacing-sm, 8px);
+  bottom: var(--spacing-sm, 8px);
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary, #161b22);
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  color: var(--text-primary, #e6edf3);
+  font-family: inherit;
+  overflow: hidden;
+  z-index: 30;
+}
+
+.spec-preview__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.spec-preview__title {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spec-preview__close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.spec-preview__close:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.spec-preview__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.spec-preview__meta {
+  margin-bottom: 10px;
+}
+
+.spec-preview__state {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.spec-markdown-surface {
+  background: var(--panel-bg-strong, var(--bg-secondary));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 8px);
+  padding: 12px;
+  color: var(--text-primary);
+}
+
+.spec-markdown-surface__body.markdown-body {
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: inherit;
+}
+
+.spec-markdown-surface__body.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+.spec-markdown-surface__body.markdown-body > :last-child {
+  margin-bottom: 0;
+}
+
+.graph-node-card__summary-slot {
+  min-height: 4.35rem;
+  max-height: 6.4rem;
+  overflow: hidden;
+}
+
+.graph-node-card__summary-surface {
+  height: 100%;
+}
+
+.graph-node-card__summary-surface .spec-markdown-surface__body.markdown-body {
+  display: block;
+}
+
+.graph-node-card__summary-surface .spec-markdown-surface__body.markdown-body p {
+  margin: 0;
+}
+
+.graph-node-card__summary-surface .spec-markdown-surface__body.markdown-body h1,
+.graph-node-card__summary-surface .spec-markdown-surface__body.markdown-body h2,
+.graph-node-card__summary-surface .spec-markdown-surface__body.markdown-body h3,
+.graph-node-card__summary-surface .spec-markdown-surface__body.markdown-body h4,
+.graph-node-card__summary-surface .spec-markdown-surface__body.markdown-body h5,
+.graph-node-card__summary-surface .spec-markdown-surface__body.markdown-body h6 {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.graph-node-card__summary-surface .spec-markdown-surface__body.markdown-body ul,
+.graph-node-card__summary-surface .spec-markdown-surface__body.markdown-body ol {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.graph-node-card__summary-surface .spec-markdown-surface__body.markdown-body li {
+  margin: 0.1rem 0;
+}
+
+.spec-preview__error {
+  color: var(--error, #f85149);
+  font-size: 13px;
+}
+
+.spec-preview__loading {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.spec-preview__footer {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.spec-preview__details {
+  padding: 6px 14px;
+  background: var(--accent, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.spec-preview__details:hover {
+  background: var(--accent-hover, #2563eb);
+}

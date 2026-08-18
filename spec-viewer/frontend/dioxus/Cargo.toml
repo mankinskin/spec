@@ -1,0 +1,58 @@
+[package]
+name = "spec-viewer-dioxus"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "spec-viewer-dioxus"
+path = "src/main.rs"
+
+[dependencies]
+# Dioxus platform
+dioxus = { version = "0.7", features = ["web", "router"] }
+
+# Shared viewer-api platform shell (WebGPU canvas + overlay layout)
+viewer-api-dioxus = { path = "../../../../viewer-api/viewer-api/frontend/dioxus" }
+
+# HTTP client for the browser fetch API
+gloo-net = { version = "0.6", features = ["http"] }
+
+# Safe DOM event listener management (auto-removes on drop, no Closure::forget)
+gloo-events = "0.2"
+
+# Async support
+wasm-bindgen-futures = "0.4"
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+
+# Web platform APIs for SSE and local storage
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Storage",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "EventTarget",
+    "EventSource",
+    "MessageEvent",
+    "KeyboardEvent",
+    "console",
+    "Location",
+] }
+
+# Serialization — mirrors spec-http REST responses
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# URL encoding for building query strings
+percent-encoding = "2"
+
+# Markdown rendering for spec bodies with internal spec link rewriting
+pulldown-cmark = { version = "0.12", default-features = false, features = ["html"] }
+
+# Logging in WASM
+tracing = "0.1"
+tracing-wasm = "0.2"
+
+[features]
+profile-browser = ["viewer-api-dioxus/profile-browser"]
