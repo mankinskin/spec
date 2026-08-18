@@ -46,7 +46,7 @@ pub(super) fn dispatch(
         }));
     }
 
-    let mut store = SpecStore::open(&index_root)?;
+    let mut store = SpecStore::open_or_init(&index_root)?;
 
     let reindex = if command_uses_descendant_scan_roots(&command) {
         register_descendant_scan_roots(&store, &default_workspace_root)?

@@ -150,7 +150,8 @@ impl SpecServer {
     ) -> Result<T, McpError> {
         let index_root = self.resolve_workspace_root(workspace)?;
         let _guard = self.store_lock.lock().await;
-        let mut store = SpecStore::open(&index_root).map_err(Self::spec_err)?;
+        let mut store =
+            SpecStore::open_or_init(&index_root).map_err(Self::spec_err)?;
         store.scan(false).map_err(Self::spec_err)?;
         let result = f(&mut store, &index_root);
         drop(store);

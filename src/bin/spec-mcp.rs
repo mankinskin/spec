@@ -15,7 +15,7 @@ async fn main() {
 
     let index_root = resolve_index_root();
 
-    SpecStore::open(&index_root).unwrap_or_else(|error| {
+    SpecStore::open_or_init(&index_root).unwrap_or_else(|error| {
         eprintln!(
             "Failed to open spec store at {}: {error}",
             index_root.display()

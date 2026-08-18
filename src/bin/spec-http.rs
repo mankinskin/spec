@@ -51,7 +51,7 @@ async fn main() {
             }
         });
 
-    let store = SpecStore::open(&root).unwrap_or_else(|error| {
+    let store = SpecStore::open_or_init(&root).unwrap_or_else(|error| {
         eprintln!("Failed to open spec store at {}: {error}", root.display());
         std::process::exit(1);
     });
