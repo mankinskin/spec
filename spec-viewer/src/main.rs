@@ -36,7 +36,7 @@ use viewer_api::{
 };
 
 use spec_api::SpecStore;
-use spec_http::state::SpecAppState;
+use spec_http::http::state::SpecAppState;
 
 struct CliOptions {
     port: u16,
@@ -159,7 +159,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _ = s.scan(false);
     }
 
-    let api_router = spec_http::build_router(state);
+    let api_router = spec_http::http::build_router(state);
     let api_router =
         api_router.merge(client_log_router(ClientLogState::default()));
     let app = with_static_files(api_router, Some(options.static_dir.clone()));
