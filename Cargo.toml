@@ -4,17 +4,11 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 
-[workspace]
-resolver = "2"
-members = [
-  "crates/spec-api",
-]
-
- [features]
- default = []
+[features]
+default = []
 cli = ["dep:chrono", "dep:clap", "dep:memory-kernel", "dep:proc-macro2", "dep:rule-api", "dep:serde", "dep:serde_json", "dep:syn", "dep:thiserror", "dep:ticket-api", "dep:toon-format", "dep:uuid", "dep:walkdir"]
- mcp = ["dep:chrono", "dep:memory-kernel", "dep:rmcp", "dep:serde", "dep:serde_json", "dep:tokio", "dep:tracing", "dep:tracing-subscriber", "dep:uuid"]
- http = ["dep:axum", "dep:chrono", "dep:futures-util", "dep:memory-kernel", "dep:serde", "dep:serde_json", "dep:tokio", "dep:tower-http", "dep:tracing", "dep:uuid", "dep:viewer-api"]
+mcp = ["dep:chrono", "dep:memory-kernel", "dep:rmcp", "dep:serde", "dep:serde_json", "dep:tokio", "dep:tracing", "dep:tracing-subscriber", "dep:uuid"]
+http = ["dep:axum", "dep:chrono", "dep:futures-util", "dep:memory-kernel", "dep:serde", "dep:serde_json", "dep:tokio", "dep:tower-http", "dep:tracing", "dep:uuid", "dep:viewer-api"]
 
 [[bin]]
 name = "spec"

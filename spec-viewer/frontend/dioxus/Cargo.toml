@@ -12,7 +12,7 @@ path = "src/main.rs"
 dioxus = { version = "0.7", features = ["web", "router"] }
 
 # Shared viewer-api platform shell (WebGPU canvas + overlay layout)
-viewer-api-dioxus = { path = "../../../../viewer-api/viewer-api/frontend/dioxus" }
+viewer-api-dioxus = { git = "https://github.com/mankinskin/viewer-api", branch = "main" }
 
 # HTTP client for the browser fetch API
 gloo-net = { version = "0.6", features = ["http"] }

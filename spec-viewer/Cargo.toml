@@ -10,11 +10,11 @@ path = "src/main.rs"
 
 [dependencies]
 # Spec crates
-spec-api  = { path = "../../memory-api/crates/spec-api" }
-spec-http = { path = "../../memory-api/tools/http/spec-http" }
+spec-api  = { path = "../crates/spec-api" }
+spec-http = { package = "spec", path = "..", features = ["http"] }
 
 # Shared viewer infrastructure
-viewer-api = { path = "../../viewer-api/viewer-api" }
+viewer-api = { git = "https://github.com/mankinskin/viewer-api", branch = "main" }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
