@@ -30,7 +30,7 @@ path = "src/lib.rs"
 
 [dependencies]
 spec-api = { path = "crates/spec-api" }
-ticket-api = { git = "https://github.com/mankinskin/memory-api", branch = "main", optional = true }
+ticket-api = { git = "https://github.com/mankinskin/ticket", branch = "main", optional = true }
 memory-kernel = { git = "https://github.com/mankinskin/memory-kernel", branch = "main", optional = true }
 rule-api = { git = "https://github.com/mankinskin/memory-api", branch = "main", optional = true }
 axum = { version = "0.8", features = ["macros"], optional = true }
