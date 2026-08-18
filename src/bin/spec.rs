@@ -1,6 +1,6 @@
 use clap::error::ErrorKind;
 
-use spec_cli::cli::{
+use spec::cli::{
     CliOutput,
     error_output,
     parse_cli_from,

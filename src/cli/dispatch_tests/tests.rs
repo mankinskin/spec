@@ -78,7 +78,7 @@ fn run_git(
 
 fn load_contract_parity_fixture() -> ContractParityFixture {
     let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../test-fixtures/spec-contract-parity.json");
+        .join("test-fixtures/spec-contract-parity.json");
     serde_json::from_str(&fs::read_to_string(fixture_path).unwrap()).unwrap()
 }
 

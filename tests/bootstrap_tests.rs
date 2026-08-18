@@ -3,11 +3,11 @@ use std::{
     path::Path,
 };
 
-use spec_api::SpecStore;
-use spec_cli::{
+use spec::{
     BootstrapArgs,
     cmd_bootstrap,
 };
+use spec_api::SpecStore;
 use tempfile::TempDir;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

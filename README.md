@@ -1,12 +1,13 @@
 Back to [memory-api/README.md](../../../README.md).
 
-# spec-cli
+# spec
 
-CLI interface for `spec-api`.
+Public transport crate for `spec-api`.
 
 ## Interface
 
-Use `spec` when you need to create, browse, and validate specification documents from a local checkout.
+The `spec` crate provides feature-gated CLI, MCP, and HTTP transports for
+specification documents stored by `spec-api`.
 
 - `create`, `get`, `update`, `delete`, `list`, `search`: maintain spec records and inspect them by id, slug, or text query.
 - `tree`, `section`: navigate or edit hierarchical spec structure.
@@ -21,11 +22,12 @@ Global options:
 
 ## Usage
 
-Build or run from a checkout of `memory-viewers/memory-api`:
+Build the desired transport from this repository:
 
 ```bash
-cargo build -p spec-cli --bin spec
-cargo run -p spec-cli --bin spec -- --help
+cargo run --features cli --bin spec -- --help
+cargo run --features mcp --bin spec-mcp
+cargo run --features http --bin spec-http
 ```
 
 `spec` finds the nearest `.spec` workspace by walking up from the current directory. Use `--index-root` when you want to point at a different store.
