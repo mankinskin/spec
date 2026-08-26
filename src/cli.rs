@@ -113,6 +113,8 @@ pub enum CliRunError {
     #[error("target config error: {0}")]
     TargetConfig(#[from] rule_api::TargetConfigError),
     #[error("{0}")]
+    ConsumerWorkspace(#[from] memory_kernel::workspace::ConsumerWorkspaceError),
+    #[error("{0}")]
     BadRequest(String),
 }
 

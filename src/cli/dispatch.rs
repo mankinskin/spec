@@ -32,7 +32,7 @@ pub(super) fn dispatch(
     )?;
 
     let index_root =
-        resolve_index_root(index_root_override, workspace_root_override);
+        resolve_index_root(index_root_override, workspace_root_override)?;
     let default_workspace_root =
         resolve_workspace_root(&index_root, workspace_root_override);
 
@@ -162,7 +162,7 @@ fn dispatch_read_only(
 fn resolve_index_root(
     override_path: Option<&Path>,
     workspace_root_override: Option<&Path>,
-) -> PathBuf {
+) -> Result<PathBuf, memory_kernel::workspace::ConsumerWorkspaceError> {
     let cwd = memory_kernel::workspace::working_dir();
     let env_root = std::env::var_os("SPEC_INDEX_ROOT").map(PathBuf::from);
     resolve_index_root_from(
@@ -178,8 +178,8 @@ fn resolve_index_root_from(
     workspace_root_override: Option<&Path>,
     env_root: Option<&Path>,
     cwd: Option<&Path>,
-) -> PathBuf {
-    memory_kernel::workspace::resolve_requested_store_root_from(
+) -> Result<PathBuf, memory_kernel::workspace::ConsumerWorkspaceError> {
+    memory_kernel::workspace::resolve_consumer_store_root_from(
         override_path,
         workspace_root_override,
         env_root,

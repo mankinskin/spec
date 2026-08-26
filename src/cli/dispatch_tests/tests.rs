@@ -90,7 +90,7 @@ fn resolve_index_root_prefers_nearest_parent_spec_dir() {
     std::fs::create_dir_all(repo.join(".spec")).unwrap();
     std::fs::create_dir_all(&nested).unwrap();
 
-    let resolved = resolve_index_root_from(None, None, None, Some(&nested));
+    let resolved = resolve_index_root_from(None, None, None, Some(&nested)).unwrap();
 
     assert_eq!(resolved, repo.join(".spec"));
 }
@@ -101,7 +101,7 @@ fn resolve_index_root_defaults_to_current_directory_spec_dir() {
     let repo = dir.path().join("repo");
     std::fs::create_dir_all(&repo).unwrap();
 
-    let resolved = resolve_index_root_from(None, None, None, Some(&repo));
+    let resolved = resolve_index_root_from(None, None, None, Some(&repo)).unwrap();
 
     assert_eq!(resolved, repo.join(".spec"));
 }
@@ -115,7 +115,7 @@ fn resolve_index_root_prefers_explicit_workspace_root() {
     std::fs::create_dir_all(child.join(".spec")).unwrap();
 
     let resolved =
-        resolve_index_root_from(None, Some(&child), None, Some(&repo));
+        resolve_index_root_from(None, Some(&child), None, Some(&repo)).unwrap();
 
     assert_eq!(resolved, child.join(".spec"));
 }
