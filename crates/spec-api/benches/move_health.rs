@@ -18,45 +18,19 @@
 //! a genuinely-interrupted resume path cannot be exercised here; this is
 //! recorded in the benchmark name (`..._resume_idempotent_proxy`).
 
-use std::{
-    fs,
-    path::{
-        Path,
-        PathBuf,
-    },
-    process::Command,
-};
+use std::path::Path;
 
 use chrono::Utc;
-use criterion::{
-    BatchSize,
-    Criterion,
-    criterion_group,
-    criterion_main,
-};
+use criterion::{Criterion, criterion_group, criterion_main};
 use memory_kernel::{
     model::edge::EdgeRecord,
-    storage::move_kernel::{
-        MoveBlocker,
-        MoveExecutionPhase,
-        MovePlan,
+    storage::move_kernel::{MoveExecutionPhase, MovePlan},
+    testing::{
+        MoveBenchmarkWorkspace, drop_fixture_blockers, iter_move_benchmark, move_bench_criterion,
     },
 };
-use spec_api::{
-    manifest::SpecManifest,
-    store::SpecStore,
-};
-use tempfile::TempDir;
+use spec_api::{manifest::SpecManifest, store::SpecStore};
 use uuid::Uuid;
-
-fn git_init(repo_root: &Path) {
-    let status = Command::new("git")
-        .current_dir(repo_root)
-        .arg("init")
-        .status()
-        .expect("run git init");
-    assert!(status.success(), "git init failed");
-}
 
 /// One isolated source+target workspace pair with `moved_count` moved specs,
 /// `background_count` unrelated specs already in the source store (used to
@@ -64,22 +38,16 @@ fn git_init(repo_root: &Path) {
 /// crossing-link edges per moved spec into a fixed external pool that stays
 /// behind in the source store.
 fn build_spec_fixture(
+    workspace: &MoveBenchmarkWorkspace,
     moved_count: usize,
     density: usize,
     background_count: usize,
-) -> (TempDir, SpecStore, PathBuf, Vec<Uuid>) {
-    let workspace_dir = tempfile::tempdir().expect("tempdir");
-    let repo = workspace_dir.path().join("repo");
-    fs::create_dir_all(&repo).expect("create repo dir");
-    git_init(&repo);
+) -> (SpecStore, std::path::PathBuf, Vec<Uuid>) {
+    workspace.reset();
+    let source_workspace = workspace.source_root();
+    let target_workspace = workspace.target_root().to_path_buf();
 
-    let source_workspace = repo.join("source");
-    let target_workspace = repo.join("target");
-    fs::create_dir_all(&source_workspace).expect("create source workspace");
-    fs::create_dir_all(&target_workspace).expect("create target workspace");
-
-    let mut source_store =
-        SpecStore::init(&source_workspace).expect("init source store");
+    let mut source_store = SpecStore::init(&source_workspace).expect("init source store");
     SpecStore::init(&target_workspace).expect("init target store");
 
     let moved_ids: Vec<Uuid> = (0..moved_count)
@@ -145,28 +113,22 @@ fn build_spec_fixture(
 
     source_store.scan(true).expect("scan source store");
 
-    (workspace_dir, source_store, target_workspace, moved_ids)
+    (source_store, target_workspace, moved_ids)
 }
 
 /// Build a supported preflight plan for `id`, dropping the blockers that are
 /// expected artifacts of the isolated bench fixture rather than genuine
 /// domain conflicts (mirrors the existing spec move unit tests).
-fn active_move_plan(
-    store: &SpecStore,
-    target_root: &Path,
-    id: &Uuid,
-) -> MovePlan {
+fn active_move_plan(store: &SpecStore, target_root: &Path, id: &Uuid) -> MovePlan {
     let mut plan = store
         .plan_move_preflight(id, target_root)
         .expect("plan preflight");
-    plan.blockers.retain(|blocker| {
-        !matches!(
-            blocker,
-            MoveBlocker::PathReferenceScanUnavailable { .. }
-                | MoveBlocker::DirtyTrackedFiles { .. }
-        )
-    });
-    assert!(plan.supported(), "unexpected move blockers: {:?}", plan.blockers);
+    drop_fixture_blockers(&mut plan);
+    assert!(
+        plan.supported(),
+        "unexpected move blockers: {:?}",
+        plan.blockers
+    );
     plan
 }
 
@@ -174,20 +136,17 @@ fn active_move_plan(
 
 fn bench_spec_move_preflight_by_entity_count(c: &mut Criterion) {
     for &moved_count in &[5usize, 25, 100] {
-        let (_workspace_dir, store, target_root, ids) =
-            build_spec_fixture(moved_count, 0, 0);
+        let workspace = MoveBenchmarkWorkspace::new();
+        let (store, target_root, ids) = build_spec_fixture(&workspace, moved_count, 0, 0);
         let id = ids[0];
-        c.bench_function(
-            &format!("spec_move_preflight_{moved_count}entities"),
-            |b| {
-                b.iter(|| {
-                    let plan = store
-                        .plan_move_preflight(&id, &target_root)
-                        .expect("plan preflight");
-                    criterion::black_box(plan);
-                });
-            },
-        );
+        c.bench_function(&format!("spec_move_preflight_{moved_count}entities"), |b| {
+            b.iter(|| {
+                let plan = store
+                    .plan_move_preflight(&id, &target_root)
+                    .expect("plan preflight");
+                criterion::black_box(plan);
+            });
+        });
     }
 }
 
@@ -196,8 +155,8 @@ fn bench_spec_move_preflight_by_entity_count(c: &mut Criterion) {
 fn bench_spec_move_preflight_by_link_density(c: &mut Criterion) {
     const MOVED_COUNT: usize = 25;
     for &density in &[0usize, 5, 20] {
-        let (_workspace_dir, store, target_root, ids) =
-            build_spec_fixture(MOVED_COUNT, density, 0);
+        let workspace = MoveBenchmarkWorkspace::new();
+        let (store, target_root, ids) = build_spec_fixture(&workspace, MOVED_COUNT, density, 0);
         let id = ids[0];
         c.bench_function(
             &format!("spec_move_preflight_crossing_{density}links"),
@@ -216,46 +175,47 @@ fn bench_spec_move_preflight_by_link_density(c: &mut Criterion) {
 // --- Phase separation ---
 
 fn bench_spec_move_preflight_only(c: &mut Criterion) {
+    let workspace = MoveBenchmarkWorkspace::new();
+    let (store, target_root, ids) = build_spec_fixture(&workspace, 1, 0, 0);
+    let id = ids[0];
     c.bench_function("spec_move_phase_preflight_only", |b| {
-        b.iter_batched(
-            || build_spec_fixture(1, 0, 0),
-            |(_workspace_dir, store, target_root, ids)| {
-                let plan = store
-                    .plan_move_preflight(&ids[0], &target_root)
-                    .expect("plan preflight");
-                criterion::black_box(plan);
-            },
-            BatchSize::SmallInput,
-        );
+        b.iter(|| {
+            let plan = store
+                .plan_move_preflight(&id, &target_root)
+                .expect("plan preflight");
+            criterion::black_box(plan);
+        });
     });
 }
 
 fn bench_spec_move_apply_only(c: &mut Criterion) {
+    let workspace = MoveBenchmarkWorkspace::new();
     c.bench_function("spec_move_phase_apply_only", |b| {
-        b.iter_batched(
+        iter_move_benchmark(
+            b,
             || {
-                let (workspace_dir, store, target_root, ids) =
-                    build_spec_fixture(1, 0, 0);
+                let (store, target_root, ids) = build_spec_fixture(&workspace, 1, 0, 0);
                 let plan = active_move_plan(&store, &target_root, &ids[0]);
-                (workspace_dir, store, plan)
+                (store, plan)
             },
-            |(_workspace_dir, store, plan)| {
+            |(store, plan)| {
                 let outcome = store
                     .execute_move_with_journal(&plan)
                     .expect("execute move");
                 assert_eq!(outcome.journal.phase, MoveExecutionPhase::Validated);
                 criterion::black_box(outcome);
             },
-            BatchSize::SmallInput,
         );
     });
 }
 
 fn bench_spec_move_preflight_plus_apply(c: &mut Criterion) {
+    let workspace = MoveBenchmarkWorkspace::new();
     c.bench_function("spec_move_phase_preflight_plus_apply", |b| {
-        b.iter_batched(
-            || build_spec_fixture(1, 0, 0),
-            |(_workspace_dir, store, target_root, ids)| {
+        iter_move_benchmark(
+            b,
+            || build_spec_fixture(&workspace, 1, 0, 0),
+            |(store, target_root, ids)| {
                 let plan = active_move_plan(&store, &target_root, &ids[0]);
                 let outcome = store
                     .execute_move_with_journal(&plan)
@@ -263,31 +223,30 @@ fn bench_spec_move_preflight_plus_apply(c: &mut Criterion) {
                 assert_eq!(outcome.journal.phase, MoveExecutionPhase::Validated);
                 criterion::black_box(outcome);
             },
-            BatchSize::SmallInput,
         );
     });
 }
 
 fn bench_spec_move_rollback(c: &mut Criterion) {
+    let workspace = MoveBenchmarkWorkspace::new();
     c.bench_function("spec_move_phase_rollback", |b| {
-        b.iter_batched(
+        iter_move_benchmark(
+            b,
             || {
-                let (workspace_dir, store, target_root, ids) =
-                    build_spec_fixture(1, 0, 0);
+                let (store, target_root, ids) = build_spec_fixture(&workspace, 1, 0, 0);
                 let plan = active_move_plan(&store, &target_root, &ids[0]);
                 let outcome = store
                     .execute_move_with_journal(&plan)
                     .expect("execute move");
-                (workspace_dir, store, outcome.journal.id)
+                (store, outcome.journal.id)
             },
-            |(_workspace_dir, store, journal_id)| {
+            |(store, journal_id)| {
                 let outcome = store
                     .rollback_move_with_journal(journal_id)
                     .expect("rollback move");
                 assert!(outcome.rolled_back);
                 criterion::black_box(outcome);
             },
-            BatchSize::SmallInput,
         );
     });
 }
@@ -297,24 +256,24 @@ fn bench_spec_move_rollback(c: &mut Criterion) {
 /// public move API cannot synthesize a genuinely-interrupted move. See the
 /// module doc comment.
 fn bench_spec_move_resume_idempotent_proxy(c: &mut Criterion) {
+    let workspace = MoveBenchmarkWorkspace::new();
     c.bench_function("spec_move_phase_resume_idempotent_proxy", |b| {
-        b.iter_batched(
+        iter_move_benchmark(
+            b,
             || {
-                let (workspace_dir, store, target_root, ids) =
-                    build_spec_fixture(1, 0, 0);
+                let (store, target_root, ids) = build_spec_fixture(&workspace, 1, 0, 0);
                 let plan = active_move_plan(&store, &target_root, &ids[0]);
                 let outcome = store
                     .execute_move_with_journal(&plan)
                     .expect("execute move");
-                (workspace_dir, store, outcome.journal.id)
+                (store, outcome.journal.id)
             },
-            |(_workspace_dir, store, journal_id)| {
+            |(store, journal_id)| {
                 let outcome = store
                     .resume_move_with_journal(journal_id)
                     .expect("resume move");
                 criterion::black_box(outcome);
             },
-            BatchSize::SmallInput,
         );
     });
 }
@@ -330,40 +289,39 @@ fn bench_spec_move_apply_by_store_size(c: &mut Criterion) {
     const DENSITY: usize = 5;
     for &background_count in &[10usize, 100, 400] {
         let total_store_size = MOVED_COUNT + background_count;
+        let workspace = MoveBenchmarkWorkspace::new();
         c.bench_function(
             &format!("spec_move_apply_store_size_{total_store_size}specs"),
             |b| {
-                b.iter_batched(
+                iter_move_benchmark(
+                    b,
                     || {
-                        let (workspace_dir, store, target_root, ids) =
-                            build_spec_fixture(
-                                MOVED_COUNT,
-                                DENSITY,
-                                background_count,
-                            );
-                        let plan =
-                            active_move_plan(&store, &target_root, &ids[0]);
-                        (workspace_dir, store, plan)
+                        let (store, target_root, ids) =
+                            build_spec_fixture(&workspace, MOVED_COUNT, DENSITY, background_count);
+                        let plan = active_move_plan(&store, &target_root, &ids[0]);
+                        (store, plan)
                     },
-                    |(_workspace_dir, store, plan)| {
+                    |(store, plan)| {
                         let outcome = store
                             .execute_move_with_journal(&plan)
                             .expect("execute move");
-                        assert_eq!(
-                            outcome.journal.phase,
-                            MoveExecutionPhase::Validated
-                        );
+                        assert_eq!(outcome.journal.phase, MoveExecutionPhase::Validated);
                         criterion::black_box(outcome);
                     },
-                    BatchSize::SmallInput,
                 );
             },
         );
     }
 }
 
+fn criterion_config() -> Criterion {
+    move_bench_criterion()
+}
+
 criterion_group!(
-    move_health,
+    name = move_health;
+    config = criterion_config();
+    targets =
     bench_spec_move_preflight_by_entity_count,
     bench_spec_move_preflight_by_link_density,
     bench_spec_move_preflight_only,
@@ -371,6 +329,6 @@ criterion_group!(
     bench_spec_move_preflight_plus_apply,
     bench_spec_move_rollback,
     bench_spec_move_resume_idempotent_proxy,
-    bench_spec_move_apply_by_store_size,
+    bench_spec_move_apply_by_store_size
 );
 criterion_main!(move_health);

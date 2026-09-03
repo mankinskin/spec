@@ -7,29 +7,20 @@
 //!
 //! Specs have no board or lease model, so those hooks return empty values.
 
-use std::path::{
-    Path,
-    PathBuf,
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
 };
 
 use memory_kernel::{
     error::StorageError,
     storage::move_kernel::{
-        self,
-        MoveDomain,
-        MoveError,
-        MoveOutcome,
-        MovePlan,
-        MoveReferences,
-        MoveResult,
+        self, MoveDomain, MoveError, MoveOutcome, MovePlan, MoveReferences, MoveResult,
     },
 };
 use uuid::Uuid;
 
-use crate::{
-    error::SpecError,
-    store::SpecStore,
-};
+use crate::{error::SpecError, store::SpecStore};
 
 const SPEC_INDEX_DIR: &str = ".spec";
 
@@ -41,18 +32,13 @@ fn to_move_error(error: SpecError) -> MoveError {
 }
 
 fn spec_entity_root(store_root: &Path) -> PathBuf {
-    memory_kernel::workspace::resolve_store_root_from(
-        store_root,
-        SPEC_INDEX_DIR,
-    )
-    .join("specs")
+    memory_kernel::workspace::resolve_store_root_from(store_root, SPEC_INDEX_DIR).join("specs")
 }
 
 fn from_move_error(error: MoveError) -> SpecError {
     match error {
         MoveError::Io(io) => SpecError::Storage(StorageError::Io(io)),
-        MoveError::Domain(message) =>
-            SpecError::Storage(StorageError::Other(message)),
+        MoveError::Domain(message) => SpecError::Storage(StorageError::Other(message)),
         MoveError::InteroperabilityContract {
             artifact_class,
             detail,
@@ -86,10 +72,7 @@ impl MoveDomain for SpecMoveDomain<'_> {
         self.store.entity_store().index_root.clone()
     }
 
-    fn source_entity_path(
-        &self,
-        entity_id: &Uuid,
-    ) -> MoveResult<Option<PathBuf>> {
+    fn source_entity_path(&self, entity_id: &Uuid) -> MoveResult<Option<PathBuf>> {
         Ok(self
             .store
             .entity_store()
@@ -98,10 +81,7 @@ impl MoveDomain for SpecMoveDomain<'_> {
             .map(|entity| entity.path))
     }
 
-    fn related_entities(
-        &self,
-        entity_id: &Uuid,
-    ) -> MoveResult<MoveReferences> {
+    fn related_entities(&self, entity_id: &Uuid) -> MoveResult<MoveReferences> {
         let mut references = MoveReferences::default();
         for edge in self
             .store
@@ -119,24 +99,39 @@ impl MoveDomain for SpecMoveDomain<'_> {
         Ok(references)
     }
 
-    fn target_store_present(
+    fn related_entities_for_set(
         &self,
-        target_store_root: &Path,
-    ) -> MoveResult<bool> {
+        entity_ids: &[Uuid],
+    ) -> MoveResult<BTreeMap<Uuid, MoveReferences>> {
+        let mut references = entity_ids
+            .iter()
+            .map(|entity_id| (*entity_id, MoveReferences::default()))
+            .collect::<BTreeMap<_, _>>();
+        for edge in self
+            .store
+            .entity_store()
+            .list_all_edges()
+            .map_err(|error| to_move_error(error.into()))?
+        {
+            if let Some(entry) = references.get_mut(&edge.from) {
+                entry.outbound.push(edge.to);
+            }
+            if let Some(entry) = references.get_mut(&edge.to) {
+                entry.inbound.push(edge.from);
+            }
+        }
+        Ok(references)
+    }
+
+    fn target_store_present(&self, target_store_root: &Path) -> MoveResult<bool> {
         match SpecStore::open(target_store_root) {
             Ok(_) => Ok(true),
-            Err(SpecError::Storage(StorageError::WorkspaceNotFound {
-                ..
-            })) => Ok(false),
+            Err(SpecError::Storage(StorageError::WorkspaceNotFound { .. })) => Ok(false),
             Err(error) => Err(to_move_error(error)),
         }
     }
 
-    fn entity_indexed_in(
-        &self,
-        store_root: &Path,
-        entity_id: &Uuid,
-    ) -> MoveResult<bool> {
+    fn entity_indexed_in(&self, store_root: &Path, entity_id: &Uuid) -> MoveResult<bool> {
         let store = SpecStore::open(store_root).map_err(to_move_error)?;
         let entity_root = spec_entity_root(store_root);
         Ok(store
@@ -147,10 +142,33 @@ impl MoveDomain for SpecMoveDomain<'_> {
             .unwrap_or(false))
     }
 
-    fn scan_store(
+    fn entity_indexed_in_many(
         &self,
         store_root: &Path,
-    ) -> MoveResult<()> {
+        entity_ids: &[Uuid],
+    ) -> MoveResult<BTreeMap<Uuid, bool>> {
+        let store = SpecStore::open(store_root).map_err(to_move_error)?;
+        let entity_root = spec_entity_root(store_root);
+        let indexed = store
+            .entity_store()
+            .list_indexed()
+            .map_err(|error| to_move_error(error.into()))?;
+        let indexed_paths = indexed
+            .into_iter()
+            .map(|entity| (entity.id, entity.path.starts_with(&entity_root)))
+            .collect::<BTreeMap<_, _>>();
+        Ok(entity_ids
+            .iter()
+            .map(|entity_id| {
+                (
+                    *entity_id,
+                    indexed_paths.get(entity_id).copied().unwrap_or(false),
+                )
+            })
+            .collect())
+    }
+
+    fn scan_store(&self, store_root: &Path) -> MoveResult<()> {
         let store = SpecStore::open(store_root).map_err(to_move_error)?;
         store
             .entity_store()
@@ -169,33 +187,23 @@ impl SpecStore {
         target_workspace_root: &Path,
     ) -> Result<MovePlan, SpecError> {
         let domain = SpecMoveDomain::new(self);
-        move_kernel::plan_move(&domain, spec_id, target_workspace_root)
-            .map_err(from_move_error)
+        move_kernel::plan_move(&domain, spec_id, target_workspace_root).map_err(from_move_error)
     }
 
     /// Execute a supported spec move with a fresh journal.
-    pub fn execute_move_with_journal(
-        &self,
-        plan: &MovePlan,
-    ) -> Result<MoveOutcome, SpecError> {
+    pub fn execute_move_with_journal(&self, plan: &MovePlan) -> Result<MoveOutcome, SpecError> {
         let domain = SpecMoveDomain::new(self);
         move_kernel::execute_move(&domain, plan).map_err(from_move_error)
     }
 
     /// Resume an interrupted spec move from its journal id.
-    pub fn resume_move_with_journal(
-        &self,
-        journal_id: Uuid,
-    ) -> Result<MoveOutcome, SpecError> {
+    pub fn resume_move_with_journal(&self, journal_id: Uuid) -> Result<MoveOutcome, SpecError> {
         let domain = SpecMoveDomain::new(self);
         move_kernel::resume_move(&domain, journal_id).map_err(from_move_error)
     }
 
     /// Roll back a spec move from its journal id.
-    pub fn rollback_move_with_journal(
-        &self,
-        journal_id: Uuid,
-    ) -> Result<MoveOutcome, SpecError> {
+    pub fn rollback_move_with_journal(&self, journal_id: Uuid) -> Result<MoveOutcome, SpecError> {
         let domain = SpecMoveDomain::new(self);
         move_kernel::rollback_move(&domain, journal_id).map_err(from_move_error)
     }
@@ -206,19 +214,12 @@ mod tests {
     use super::*;
     use memory_kernel::{
         model::edge::EdgeRecord,
-        storage::move_kernel::{
-            MoveBlocker,
-            MoveExecutionPhase,
-            MoveReferenceDirection,
-        },
+        storage::move_kernel::{MoveBlocker, MoveExecutionPhase, MoveReferenceDirection},
     };
     use std::process::Command;
     use tempfile::tempdir;
 
-    fn run_git(
-        repo_root: &Path,
-        args: &[&str],
-    ) {
+    fn run_git(repo_root: &Path, args: &[&str]) {
         let status = Command::new("git")
             .current_dir(repo_root)
             .args(args)
@@ -242,11 +243,7 @@ mod tests {
         let mut source_store = SpecStore::init(&source_workspace).unwrap();
         let _target_store = SpecStore::init(&target_workspace).unwrap();
 
-        let spec = crate::manifest::SpecManifest::new(
-            "sample/spec",
-            "Sample spec",
-            "spec-api",
-        );
+        let spec = crate::manifest::SpecManifest::new("sample/spec", "Sample spec", "spec-api");
         let spec_id: Uuid = source_store.create(&spec, "body", None).unwrap();
         source_store.scan(true).unwrap();
 
@@ -290,19 +287,10 @@ mod tests {
         let mut source_store = SpecStore::init(&source_workspace).unwrap();
         let _target_store = SpecStore::init(&target_workspace).unwrap();
 
-        let parent = crate::manifest::SpecManifest::new(
-            "track/parent",
-            "Parent",
-            "spec-api",
-        );
-        let _parent_id =
-            source_store.create(&parent, "parent body", None).unwrap();
+        let parent = crate::manifest::SpecManifest::new("track/parent", "Parent", "spec-api");
+        let _parent_id = source_store.create(&parent, "parent body", None).unwrap();
 
-        let mut child = crate::manifest::SpecManifest::new(
-            "track/child",
-            "Child",
-            "spec-api",
-        );
+        let mut child = crate::manifest::SpecManifest::new("track/child", "Child", "spec-api");
         child.extra.insert(
             "parent".to_string(),
             serde_json::Value::String("track/parent".into()),
@@ -315,8 +303,7 @@ mod tests {
             line_end: 2,
             description: None,
         });
-        let child_id: Uuid =
-            source_store.create(&child, "child body", None).unwrap();
+        let child_id: Uuid = source_store.create(&child, "child body", None).unwrap();
         source_store.scan(true).unwrap();
 
         let mut plan = source_store
@@ -363,20 +350,10 @@ mod tests {
         let mut source_store = SpecStore::init(&source_workspace).unwrap();
         let _target_store = SpecStore::init(&target_workspace).unwrap();
 
-        let moving = crate::manifest::SpecManifest::new(
-            "track/moving",
-            "Moving",
-            "spec-api",
-        );
-        let related = crate::manifest::SpecManifest::new(
-            "track/related",
-            "Related",
-            "spec-api",
-        );
-        let moving_id =
-            source_store.create(&moving, "moving body", None).unwrap();
-        let related_id =
-            source_store.create(&related, "related body", None).unwrap();
+        let moving = crate::manifest::SpecManifest::new("track/moving", "Moving", "spec-api");
+        let related = crate::manifest::SpecManifest::new("track/related", "Related", "spec-api");
+        let moving_id = source_store.create(&moving, "moving body", None).unwrap();
+        let related_id = source_store.create(&related, "related body", None).unwrap();
         source_store
             .entity_store()
             .add_edge(EdgeRecord {
@@ -398,9 +375,11 @@ mod tests {
                 && entry.direction == MoveReferenceDirection::Outbound
                 && !entry.visible_from_destination
         }));
-        assert!(!plan.blockers.iter().any(|blocker| matches!(
-            blocker,
-            MoveBlocker::InvisibleReference { .. }
-        )));
+        assert!(
+            !plan
+                .blockers
+                .iter()
+                .any(|blocker| matches!(blocker, MoveBlocker::InvisibleReference { .. }))
+        );
     }
 }

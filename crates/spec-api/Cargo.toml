@@ -17,6 +17,7 @@ thiserror = "2"
 tracing = "0.1"
 
 [dev-dependencies]
+memory-kernel = { git = "https://github.com/mankinskin/memory-kernel", branch = "main", features = ["testing"] }
 pretty_assertions = "1"
 tempfile = "3"
 memory-fixtures = { git = "https://github.com/mankinskin/memory-fixtures", branch = "main" }
