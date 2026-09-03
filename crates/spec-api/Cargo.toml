@@ -20,3 +20,8 @@ tracing = "0.1"
 pretty_assertions = "1"
 tempfile = "3"
 memory-fixtures = { git = "https://github.com/mankinskin/memory-fixtures", branch = "main" }
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "move_health"
+harness = false
