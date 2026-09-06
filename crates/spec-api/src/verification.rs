@@ -147,7 +147,11 @@ pub fn recompute_spec_verified_state(
         .map_err(|e| format!("Failed to update spec state to verified: {e}"))?;
 
     if let Some(store) = feedback_store {
-        let urn = EntityUrn::spec(store.workspace_slug(), spec_id_or_slug)?;
+        let workspace = store.workspace_path();
+        let urn = EntityUrn::spec(
+            workspace.to_string_lossy().into_owned(),
+            spec_id_or_slug,
+        )?;
         let entry = FeedbackEntry::new(
             FeedbackSource::System,
             urn,
