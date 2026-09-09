@@ -22,7 +22,11 @@ pub use default_schema::{
 };
 pub use manifest::{
     AcceptanceCriterion,
+    ContractEdge,
+    CriterionArtifact,
+    CURRENT_FORMAT_VERSION,
     EvidenceRequirement,
+    EvidenceReference,
     ExpectedProperty,
     FulfillmentStatus,
     FulfillmentSubjectKind,

@@ -49,6 +49,17 @@ fn make_spec(
     SpecManifest::new(slug, title, "test-component")
 }
 
+fn make_v2_spec(
+    slug: &str,
+    title: &str,
+    component_id: &str,
+) -> SpecManifest {
+    let mut spec = make_spec(slug, title);
+    spec.set_format_version(crate::CURRENT_FORMAT_VERSION);
+    spec.set_component_id(component_id);
+    spec
+}
+
 fn setup_local_store() -> (TempDir, PathBuf, PathBuf, SpecStore) {
     let tmp = TempDir::new().unwrap();
     let repo = tmp.path().join("repo");
@@ -113,6 +124,46 @@ fn create_get_update_delete_spec() {
         store.get("root/overview"),
         Err(SpecError::NotFound(_))
     ));
+}
+
+#[test]
+fn v2_manifest_requires_explicit_identity_and_round_trips() {
+    let (_tmp, mut store) = setup();
+    let spec = make_v2_spec("root/v2", "V2", "root-v2");
+    let id = store.create(&spec, "body", None).unwrap();
+    let fetched = store.get(&id.to_string()).unwrap();
+
+    assert_eq!(fetched.format_version(), Some(crate::CURRENT_FORMAT_VERSION));
+    assert_eq!(fetched.component_id(), Some("root-v2"));
+}
+
+#[test]
+fn v2_component_ids_are_unique_and_immutable() {
+    let (_tmp, mut store) = setup();
+    store.create(&make_v2_spec("root/one", "One", "shared"), "body", None).unwrap();
+
+    let duplicate = store.create(
+        &make_v2_spec("root/two", "Two", "shared"),
+        "body",
+        None,
+    );
+    assert!(matches!(duplicate, Err(SpecError::DuplicateComponentId(_))));
+
+    let id = store.get("root/one").unwrap().id;
+    let mut patch = BTreeMap::new();
+    patch.insert("component_id".into(), Value::String("changed".into()));
+    let changed = store.update(&id.to_string(), patch, None);
+    assert!(matches!(changed, Err(SpecError::ImmutableComponentId(_))));
+}
+
+#[test]
+fn explicit_non_v2_format_version_is_rejected() {
+    let (_tmp, mut store) = setup();
+    let mut spec = make_spec("root/unsupported", "Unsupported");
+    spec.set_format_version(1);
+
+    let result = store.create(&spec, "body", None);
+    assert!(matches!(result, Err(SpecError::InvalidComponentId(_))));
 }
 
 #[test]

@@ -19,6 +19,8 @@ use crate::{
 
 pub type SpecId = Uuid;
 
+pub const CURRENT_FORMAT_VERSION: u32 = 2;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum SpecContractMode {
@@ -56,6 +58,36 @@ pub struct EvidenceRequirement {
     pub description: String,
     #[serde(default)]
     pub optional: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CriterionArtifact {
+    pub criterion_id: String,
+    pub owner_component_id: String,
+    pub statement: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub measurement: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evidence_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct EvidenceReference {
+    pub evidence_id: String,
+    pub kind: String,
+    pub target: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ContractEdge {
+    pub edge_id: String,
+    pub name: String,
+    pub consumer_component_id: String,
+    pub provider_component_id: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub criterion_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -173,6 +205,45 @@ impl SpecManifest {
         self.id
     }
 
+    pub fn format_version(&self) -> Option<u32> {
+        self.extra
+            .get("format_version")
+            .and_then(Value::as_u64)
+            .and_then(|version| u32::try_from(version).ok())
+    }
+
+    pub fn component_id(&self) -> Option<&str> {
+        self.extra.get("component_id").and_then(Value::as_str)
+    }
+
+    pub fn is_v2(&self) -> bool {
+        self.format_version() == Some(CURRENT_FORMAT_VERSION)
+    }
+
+    pub fn criterion_artifacts(&self) -> Vec<CriterionArtifact> {
+        self.criteria()
+    }
+
+    pub fn evidence_references(&self) -> Vec<EvidenceReference> {
+        self.evidence()
+    }
+
+    pub fn contract_edges(&self) -> Vec<ContractEdge> {
+        self.outward_contract_edges()
+    }
+
+    pub fn criteria(&self) -> Vec<CriterionArtifact> {
+        self.parse_vec_field("criteria")
+    }
+
+    pub fn evidence(&self) -> Vec<EvidenceReference> {
+        self.parse_vec_field("evidence")
+    }
+
+    pub fn outward_contract_edges(&self) -> Vec<ContractEdge> {
+        self.parse_vec_field("outward_contract_edges")
+    }
+
     pub fn slug(&self) -> Option<&str> {
         self.extra.get("slug").and_then(|v| v.as_str())
     }
@@ -253,6 +324,68 @@ impl SpecManifest {
     ) {
         self.extra
             .insert("slug".to_string(), Value::String(slug.to_string()));
+    }
+
+    pub fn set_format_version(
+        &mut self,
+        version: u32,
+    ) {
+        self.extra.insert(
+            "format_version".to_string(),
+            Value::Number(version.into()),
+        );
+    }
+
+    pub fn set_component_id(
+        &mut self,
+        component_id: &str,
+    ) {
+        self.extra.insert(
+            "component_id".to_string(),
+            Value::String(component_id.to_string()),
+        );
+    }
+
+    pub fn set_criterion_artifacts(
+        &mut self,
+        artifacts: Vec<CriterionArtifact>,
+    ) {
+        self.set_criteria(artifacts);
+    }
+
+    pub fn set_evidence_references(
+        &mut self,
+        references: Vec<EvidenceReference>,
+    ) {
+        self.set_evidence(references);
+    }
+
+    pub fn set_contract_edges(
+        &mut self,
+        edges: Vec<ContractEdge>,
+    ) {
+        self.set_outward_contract_edges(edges);
+    }
+
+    pub fn set_criteria(
+        &mut self,
+        criteria: Vec<CriterionArtifact>,
+    ) {
+        self.set_typed_field("criteria", criteria);
+    }
+
+    pub fn set_evidence(
+        &mut self,
+        evidence: Vec<EvidenceReference>,
+    ) {
+        self.set_typed_field("evidence", evidence);
+    }
+
+    pub fn set_outward_contract_edges(
+        &mut self,
+        edges: Vec<ContractEdge>,
+    ) {
+        self.set_typed_field("outward_contract_edges", edges);
     }
 
     pub fn set_title(
@@ -408,6 +541,26 @@ impl SpecManifest {
         }
         if self.component().is_none() {
             issues.push("missing component".to_string());
+        }
+
+        if self.extra.contains_key("format_version")
+            || self.extra.contains_key("component_id")
+                || self.extra.contains_key("criteria")
+                || self.extra.contains_key("evidence")
+                || self.extra.contains_key("outward_contract_edges")
+        {
+            match self.format_version() {
+                Some(CURRENT_FORMAT_VERSION) => {},
+                Some(version) => issues.push(format!(
+                    "unsupported format version: {version}"
+                )),
+                None => issues.push(
+                    "v2 fields require explicit format_version = 2".to_string(),
+                ),
+            }
+            if self.component_id().is_none() {
+                issues.push("v2 manifest missing component_id".to_string());
+            }
         }
 
         if !self.uses_structured_contract() {

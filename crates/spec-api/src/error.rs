@@ -20,6 +20,15 @@ pub enum SpecError {
     #[error("no-op body update rejected for {0}: content is unchanged")]
     NoOpUpdate(String),
 
+    #[error("invalid component id: {0}")]
+    InvalidComponentId(String),
+
+    #[error("duplicate component id: {0}")]
+    DuplicateComponentId(String),
+
+    #[error("component id is immutable: {0}")]
+    ImmutableComponentId(String),
+
     #[error("storage error: {0}")]
     Storage(#[from] memory_kernel::error::StorageError),
 

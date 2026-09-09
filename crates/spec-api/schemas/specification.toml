@@ -121,6 +121,28 @@ required = false
 field_type = "string"
 required = false
 
+# v2 fields are validated by SpecManifest::health_issues so legacy manifests
+# remain readable while v2 is accepted only by explicit version.
+[fields.format_version]
+field_type = "integer"
+required = false
+
+[fields.component_id]
+field_type = "string"
+required = false
+
+[fields.criteria]
+field_type = "json"
+required = false
+
+[fields.evidence]
+field_type = "json"
+required = false
+
+[fields.outward_contract_edges]
+field_type = "json"
+required = false
+
 # ── Edge rules ─────────────────────────────────────────────────────────────────
 
 [edge_rules.depends_on]

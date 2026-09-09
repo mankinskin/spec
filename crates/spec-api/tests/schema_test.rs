@@ -161,3 +161,17 @@ fn test_specification_toml_raw_parses() {
         .expect("SPECIFICATION_SCHEMA_TOML must parse as EntityTypeSchema");
     assert_eq!(schema.type_id, "specification");
 }
+
+#[test]
+fn v2_fields_are_declared_and_explicitly_versioned() {
+    let schema = specification_schema();
+    for field in [
+        "format_version",
+        "component_id",
+        "criteria",
+        "evidence",
+        "outward_contract_edges",
+    ] {
+        assert!(schema.fields.contains_key(field), "missing v2 field {field}");
+    }
+}

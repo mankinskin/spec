@@ -362,6 +362,7 @@ impl SpecStore {
             .slug()
             .ok_or_else(|| SpecError::InvalidSlug("missing slug".into()))?;
         crate::slug::validate_slug(slug)?;
+        self.validate_v2_manifest(manifest)?;
 
         if let Some(existing) = self.slug_index.resolve(slug) {
             if existing != manifest.id {
@@ -593,6 +594,7 @@ impl SpecStore {
             .get_indexed(&uuid)?
             .ok_or_else(|| SpecError::NotFound(uuid.to_string()))?;
         let existing_entity = self.inner.fs.read(&indexed.path)?;
+        self.validate_v2_patch(&existing_entity.extra, &patch, uuid)?;
 
         if let Some(new_slug_val) = patch.get("slug") {
             if let Some(new_slug) = new_slug_val.as_str() {
@@ -679,6 +681,87 @@ impl SpecStore {
         );
 
         Ok(spec)
+    }
+
+    fn validate_v2_manifest(
+        &self,
+        manifest: &SpecManifest,
+    ) -> Result<(), SpecError> {
+        if let Some(version) = manifest.format_version()
+            && version != crate::manifest::CURRENT_FORMAT_VERSION
+        {
+            return Err(SpecError::InvalidComponentId(format!(
+                "unsupported format version: {version}"
+            )));
+        }
+        if !manifest.is_v2()
+            && (manifest.component_id().is_some()
+                || manifest.extra.contains_key("criterion_artifacts")
+                || manifest.extra.contains_key("evidence_references")
+                || manifest.extra.contains_key("contract_edges"))
+        {
+            return Err(SpecError::InvalidComponentId(
+                "v2 fields require format_version = 2".to_string(),
+            ));
+        }
+        if manifest.format_version() == Some(crate::manifest::CURRENT_FORMAT_VERSION)
+            && manifest.component_id().is_none()
+        {
+            return Err(SpecError::InvalidComponentId(
+                "format_version = 2 requires component_id".to_string(),
+            ));
+        }
+        let Some(component_id) = manifest.component_id() else {
+            return Ok(());
+        };
+        if component_id.trim().is_empty() {
+            return Err(SpecError::InvalidComponentId(
+                "component_id must not be empty".to_string(),
+            ));
+        }
+        for indexed in self.inner.list_indexed()? {
+            if indexed.id == manifest.id {
+                continue;
+            }
+            let other = self.inner.fs.read(&indexed.path)?;
+            if other.extra.get("component_id").and_then(Value::as_str)
+                == Some(component_id)
+            {
+                return Err(SpecError::DuplicateComponentId(
+                    component_id.to_string(),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_v2_patch(
+        &self,
+        existing: &BTreeMap<String, Value>,
+        patch: &BTreeMap<String, Value>,
+        id: SpecId,
+    ) -> Result<(), SpecError> {
+        if let Some(value) = patch.get("component_id") {
+            let old = existing.get("component_id").and_then(Value::as_str);
+            let new = value.as_str().ok_or_else(|| {
+                SpecError::InvalidComponentId(
+                    "component_id must be a string".to_string(),
+                )
+            })?;
+            if old != Some(new) {
+                return Err(SpecError::ImmutableComponentId(id.to_string()));
+            }
+        }
+
+        let mut candidate = existing.clone();
+        candidate.extend(patch.clone());
+        let candidate = SpecManifest {
+            id,
+            created_at: Utc::now(),
+            code_refs: Vec::new(),
+            extra: candidate,
+        };
+        self.validate_v2_manifest(&candidate)
     }
 
     pub fn update_body(
