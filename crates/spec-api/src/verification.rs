@@ -213,7 +213,7 @@ The verification of this specification contract is gated by:
 
     fn empty_test_store() -> (TempDir, TestStoreConfig) {
         let tmp = TempDir::new().expect("test tempdir");
-        let config = TestStoreConfig::new(tmp.path(), "memory-api");
+        let config = TestStoreConfig::new(tmp.path());
         (tmp, config)
     }
 
