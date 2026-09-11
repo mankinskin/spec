@@ -752,7 +752,7 @@ fn open_creates_gitignore_for_local_spec_artifacts() {
 
     SpecStore::init(tmp.path()).unwrap();
 
-    let gitignore = fs::read_to_string(tmp.path().join(".gitignore")).unwrap();
+    let gitignore = fs::read_to_string(tmp.path().join(".spec").join(".gitignore")).unwrap();
     assert!(gitignore.contains("entities.db"));
     assert!(gitignore.contains("entities.db-shm"));
     assert!(gitignore.contains("entities.db-wal"));
@@ -767,7 +767,7 @@ fn open_registers_default_specs_scan_root() {
     let roots = store.entity_store().list_scan_roots().unwrap();
 
     assert!(roots.iter().any(|root| {
-        root.path == tmp.path().join("specs") && root.label == "specs"
+        root.path == tmp.path().join(".spec").join("specs") && root.label == "specs"
     }));
 }
 

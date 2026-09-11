@@ -79,6 +79,31 @@ const SPEC_INDEX_DIR: &str = ".spec";
 const GENERATED_SPEC_ARTIFACTS_FILE: &str = "generated.toml";
 const SPEC_STORE_TRACE_TARGET: &str = "spec_api::store";
 
+fn resolve_spec_store_root(start: &Path) -> PathBuf {
+    let mut dir = if start.is_dir() {
+        start.to_path_buf()
+    } else {
+        start.parent().unwrap_or(start).to_path_buf()
+    };
+
+    loop {
+        let candidate = dir.join(SPEC_INDEX_DIR);
+        if candidate.is_dir() {
+            return candidate;
+        }
+
+        let canonical = dir.join(".workflow-tools").join("spec");
+        if canonical.is_dir() {
+            return canonical;
+        }
+
+        match dir.parent() {
+            Some(parent) => dir = parent.to_path_buf(),
+            None => return start.to_path_buf(),
+        }
+    }
+}
+
 fn build_search_content(
     spec: &SpecManifest,
     body: &str,
@@ -451,12 +476,23 @@ impl SpecStore {
             return Ok(root);
         }
 
-        let store_root =
-            workspace::resolve_store_root_from(target_root, SPEC_INDEX_DIR);
-        if store_root.file_name().and_then(|name| name.to_str())
-            == Some(SPEC_INDEX_DIR)
+        let workspace_root =
+            workspace::resolve_workspace_root_from_store_root(
+                target_root,
+                SPEC_INDEX_DIR,
+            );
+        let candidate_store = workspace::resolve_store_root_at_fixed_workspace(
+            &workspace_root,
+            SPEC_INDEX_DIR,
+        );
+
+        if candidate_store.is_dir()
+            && (requested == candidate_store
+                || requested.starts_with(&candidate_store)
+                || requested == workspace_root
+                || requested.starts_with(&workspace_root))
         {
-            return Ok(store_root.join("specs"));
+            return Ok(candidate_store.join("specs"));
         }
 
         Err(StorageError::Other(format!(
