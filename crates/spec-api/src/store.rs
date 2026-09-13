@@ -142,6 +142,12 @@ impl SpecStore {
     ///
     /// Returns [`memory_kernel::error::StorageError::WorkspaceNotFound`] if the
     /// workspace has not been initialized. Run `spec init` first.
+    ///
+    /// Resolution is bounded to `index_root` itself (canonical/legacy layout
+    /// detection only) and never walks upward through ancestor directories:
+    /// callers already resolve the intended workspace before reaching this
+    /// API, and an upward walk could silently redirect an explicit path onto
+    /// an unrelated ancestor's store.
     pub fn open(index_root: &Path) -> Result<Self, SpecError> {
         let _span_guard = tracing::info_span!(
             target: SPEC_STORE_TRACE_TARGET,
@@ -149,8 +155,10 @@ impl SpecStore {
             requested_root = %index_root.display(),
         )
         .entered();
-        let index_root =
-            workspace::resolve_store_root_from(index_root, SPEC_INDEX_DIR);
+        let index_root = workspace::resolve_store_root_at_fixed_workspace(
+            index_root,
+            SPEC_INDEX_DIR,
+        );
         if !index_root.join("entities.db").is_file() {
             return Err(
                 memory_kernel::error::StorageError::WorkspaceNotFound {
@@ -172,6 +180,9 @@ impl SpecStore {
     ///
     /// Creates the workspace directory and all required index files. Idempotent:
     /// if the workspace already exists it is opened without error.
+    ///
+    /// Resolution is bounded to `index_root` itself; see [`Self::open`] for
+    /// why this must not walk upward through ancestor directories.
     pub fn init(index_root: &Path) -> Result<Self, SpecError> {
         let _span_guard = tracing::info_span!(
             target: SPEC_STORE_TRACE_TARGET,
@@ -179,8 +190,10 @@ impl SpecStore {
             requested_root = %index_root.display(),
         )
         .entered();
-        let index_root =
-            workspace::resolve_store_root_from(index_root, SPEC_INDEX_DIR);
+        let index_root = workspace::resolve_store_root_at_fixed_workspace(
+            index_root,
+            SPEC_INDEX_DIR,
+        );
         let store = Self::open_internal(&index_root)?;
         tracing::info!(
             target: SPEC_STORE_TRACE_TARGET,
@@ -730,23 +743,7 @@ impl SpecStore {
                 "unsupported format version: {version}"
             )));
         }
-        if !manifest.is_v2()
-            && (manifest.component_id().is_some()
-                || manifest.extra.contains_key("criterion_artifacts")
-                || manifest.extra.contains_key("evidence_references")
-                || manifest.extra.contains_key("contract_edges"))
-        {
-            return Err(SpecError::InvalidComponentId(
-                "v2 fields require format_version = 2".to_string(),
-            ));
-        }
-        if manifest.format_version() == Some(crate::manifest::CURRENT_FORMAT_VERSION)
-            && manifest.component_id().is_none()
-        {
-            return Err(SpecError::InvalidComponentId(
-                "format_version = 2 requires component_id".to_string(),
-            ));
-        }
+
         let Some(component_id) = manifest.component_id() else {
             return Ok(());
         };

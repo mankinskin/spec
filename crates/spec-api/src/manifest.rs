@@ -543,23 +543,9 @@ impl SpecManifest {
             issues.push("missing component".to_string());
         }
 
-        if self.extra.contains_key("format_version")
-            || self.extra.contains_key("component_id")
-                || self.extra.contains_key("criteria")
-                || self.extra.contains_key("evidence")
-                || self.extra.contains_key("outward_contract_edges")
-        {
-            match self.format_version() {
-                Some(CURRENT_FORMAT_VERSION) => {},
-                Some(version) => issues.push(format!(
-                    "unsupported format version: {version}"
-                )),
-                None => issues.push(
-                    "v2 fields require explicit format_version = 2".to_string(),
-                ),
-            }
-            if self.component_id().is_none() {
-                issues.push("v2 manifest missing component_id".to_string());
+        if let Some(version) = self.format_version() {
+            if version != CURRENT_FORMAT_VERSION {
+                issues.push(format!("unsupported format version: {version}"));
             }
         }
 
