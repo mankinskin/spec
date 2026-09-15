@@ -1,0 +1,7 @@
+id = "6dddf052-5276-4f60-a9b2-c0bc6ccd9ab5"
+created_at = "2026-09-14T18:47:57.077037400+00:00"
+title = "Test"
+state = "draft"
+component = "test"
+slug = "test/spec"
+type = "specification"

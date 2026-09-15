@@ -1,5 +1,6 @@
 pub mod code_ref;
 pub mod default_schema;
+pub mod domain_adoption;
 pub mod error;
 pub mod manifest;
 pub mod move_domain;
@@ -11,6 +12,12 @@ pub mod verification;
 pub mod workspace;
 
 pub use memory_kernel::generated_markdown::GeneratedMarkdownSnippet;
+
+pub use domain_adoption::{
+    SPEC_DOMAIN_ID,
+    SPEC_DOMAIN_SCHEMA_VERSION,
+    spec_domain_manifest,
+};
 
 pub use code_ref::{
     CodeRef,
