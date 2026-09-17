@@ -219,6 +219,52 @@ fn dispatch_move_dry_run_returns_supported_preflight_plan() {
 }
 
 #[test]
+fn dispatch_move_dry_run_accepts_normalized_spec_set() {
+    let (_dir, repo) = create_cli_spec_fixture();
+    run_git(&repo, &["init"]);
+
+    let target_workspace = repo.join("target");
+    std::fs::create_dir_all(target_workspace.join(".spec")).unwrap();
+    SpecStore::init(&target_workspace.join(".spec")).unwrap();
+
+    let mut store = SpecStore::open(&repo.join(".spec")).unwrap();
+    let first = store
+        .create(
+            &spec_api::SpecManifest::new("sample/first", "First", "spec-cli"),
+            "body",
+            None,
+        )
+        .unwrap();
+    let second = store
+        .create(
+            &spec_api::SpecManifest::new("sample/second", "Second", "spec-cli"),
+            "body",
+            None,
+        )
+        .unwrap();
+    store.scan(true).unwrap();
+
+    let payload = dispatch(
+        SpecCommandCli::Move(crate::cli::MoveArgs {
+            id: Some(format!("{}, {}, {}", second, first, second)),
+            to_workspace_root: Some(target_workspace),
+            dry_run: true,
+            resume: None,
+            rollback: None,
+        }),
+        Some(&repo.join(".spec")),
+        Some(&repo),
+        true,
+    )
+    .unwrap();
+
+    assert_eq!(payload["status"], "ok");
+    assert_eq!(payload["mode"], "plan");
+    assert_eq!(payload["spec_ids"].as_array().unwrap().len(), 2);
+    assert_eq!(payload["plan"]["entity_ids"].as_array().unwrap().len(), 2);
+}
+
+#[test]
 fn dispatch_scan_registers_child_spec_from_explicit_workspace_root() {
     let (_dir, repo, _child, spec_id) = create_nested_spec_fixture();
 

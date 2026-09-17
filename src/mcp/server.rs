@@ -312,7 +312,25 @@ impl SpecServer {
     ) -> Result<CallToolResult, McpError> {
         let to = PathBuf::from(&input.to_workspace_root);
         self.with_store(input.workspace.as_deref(), move |store, _| {
-            let id = store.resolve_id(&input.id).map_err(Self::spec_err)?;
+            if let Some(ids) = &input.ids {
+                let ids = ids
+                    .iter()
+                    .map(|id| store.resolve_id(id).map_err(Self::spec_err))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let report = store.plan_move_set(&ids, &to).map_err(Self::spec_err)?;
+                return Self::json_result(&json!({
+                    "status": if report.supported() { "ok" } else { "blocked" },
+                    "mode": "preflight",
+                    "ids": report.entity_ids,
+                    "supported": report.supported(),
+                    "blockers": report.blockers(),
+                    "plan": report,
+                }));
+            }
+            let id = input.id.as_deref().ok_or_else(|| {
+                McpError::invalid_params("move requires id or ids".to_string(), None)
+            })?;
+            let id = store.resolve_id(id).map_err(Self::spec_err)?;
             let report = store
                 .plan_move_preflight(&id, &to)
                 .map_err(Self::spec_err)?;
@@ -333,7 +351,30 @@ impl SpecServer {
     ) -> Result<CallToolResult, McpError> {
         let to = PathBuf::from(&input.to_workspace_root);
         self.with_store(input.workspace.as_deref(), move |store, _| {
-            let id = store.resolve_id(&input.id).map_err(Self::spec_err)?;
+            if let Some(ids) = &input.ids {
+                let ids = ids
+                    .iter()
+                    .map(|id| store.resolve_id(id).map_err(Self::spec_err))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let report = store.plan_move_set(&ids, &to).map_err(Self::spec_err)?;
+                if !report.supported() {
+                    return Err(McpError::invalid_params(
+                        "move set preflight blocked; run spec_move_preflight for details"
+                            .to_string(),
+                        None,
+                    ));
+                }
+                let outcome = store.execute_move_set(&report).map_err(Self::spec_err)?;
+                return Self::json_result(&json!({
+                    "status": "ok", "mode": "apply", "ids": outcome.entity_ids,
+                    "journal_id": outcome.journal.id, "phase": outcome.journal.phase,
+                    "entity_journal_ids": outcome.journal.entity_journal_ids,
+                }));
+            }
+            let id = input.id.as_deref().ok_or_else(|| {
+                McpError::invalid_params("move requires id or ids".to_string(), None)
+            })?;
+            let id = store.resolve_id(id).map_err(Self::spec_err)?;
             let report = store.plan_move_preflight(&id, &to).map_err(Self::spec_err)?;
             if !report.supported() {
                 return Err(McpError::invalid_params(

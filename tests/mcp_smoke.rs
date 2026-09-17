@@ -226,7 +226,8 @@ async fn spec_move_preflight_returns_supported_plan() {
     let result = server
         .spec_move_preflight(Parameters(SpecMoveInput {
             workspace: Some(_tmp.path().display().to_string()),
-            id: spec_id,
+            id: Some(spec_id),
+            ids: None,
             to_workspace_root: target_workspace.display().to_string(),
         }))
         .await

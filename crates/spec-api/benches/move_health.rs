@@ -26,7 +26,8 @@ use memory_kernel::{
     model::edge::EdgeRecord,
     storage::move_kernel::{MoveExecutionPhase, MovePlan},
     testing::{
-        MoveBenchmarkWorkspace, drop_fixture_blockers, iter_move_benchmark, move_bench_criterion,
+        MoveBenchmarkWorkspace, calibrated_bench_function, drop_fixture_blockers,
+        iter_move_benchmark, move_bench_criterion,
     },
 };
 use spec_api::{manifest::SpecManifest, store::SpecStore};
@@ -132,14 +133,25 @@ fn active_move_plan(store: &SpecStore, target_root: &Path, id: &Uuid) -> MovePla
     plan
 }
 
+fn benchmark_requested(name: &str) -> bool {
+    std::env::args()
+        .skip(1)
+        .find(|arg| !arg.starts_with('-'))
+        .is_none_or(|filter| name.contains(&filter))
+}
+
 // --- Entity count ---
 
 fn bench_spec_move_preflight_by_entity_count(c: &mut Criterion) {
     for &moved_count in &[5usize, 25, 100] {
+        let name = format!("spec_move_preflight_{moved_count}entities");
+        if !benchmark_requested(&name) {
+            continue;
+        }
         let workspace = MoveBenchmarkWorkspace::new();
         let (store, target_root, ids) = build_spec_fixture(&workspace, moved_count, 0, 0);
         let id = ids[0];
-        c.bench_function(&format!("spec_move_preflight_{moved_count}entities"), |b| {
+        c.bench_function(&name, |b| {
             b.iter(|| {
                 let plan = store
                     .plan_move_preflight(&id, &target_root)
@@ -155,11 +167,15 @@ fn bench_spec_move_preflight_by_entity_count(c: &mut Criterion) {
 fn bench_spec_move_preflight_by_link_density(c: &mut Criterion) {
     const MOVED_COUNT: usize = 25;
     for &density in &[0usize, 5, 20] {
+        let name = format!("spec_move_preflight_crossing_{density}links");
+        if !benchmark_requested(&name) {
+            continue;
+        }
         let workspace = MoveBenchmarkWorkspace::new();
         let (store, target_root, ids) = build_spec_fixture(&workspace, MOVED_COUNT, density, 0);
         let id = ids[0];
         c.bench_function(
-            &format!("spec_move_preflight_crossing_{density}links"),
+            &name,
             |b| {
                 b.iter(|| {
                     let plan = store
@@ -175,6 +191,9 @@ fn bench_spec_move_preflight_by_link_density(c: &mut Criterion) {
 // --- Phase separation ---
 
 fn bench_spec_move_preflight_only(c: &mut Criterion) {
+    if !benchmark_requested("spec_move_phase_preflight_only") {
+        return;
+    }
     let workspace = MoveBenchmarkWorkspace::new();
     let (store, target_root, ids) = build_spec_fixture(&workspace, 1, 0, 0);
     let id = ids[0];
@@ -189,6 +208,9 @@ fn bench_spec_move_preflight_only(c: &mut Criterion) {
 }
 
 fn bench_spec_move_apply_only(c: &mut Criterion) {
+    if !benchmark_requested("spec_move_phase_apply_only") {
+        return;
+    }
     let workspace = MoveBenchmarkWorkspace::new();
     c.bench_function("spec_move_phase_apply_only", |b| {
         iter_move_benchmark(
@@ -210,6 +232,9 @@ fn bench_spec_move_apply_only(c: &mut Criterion) {
 }
 
 fn bench_spec_move_preflight_plus_apply(c: &mut Criterion) {
+    if !benchmark_requested("spec_move_phase_preflight_plus_apply") {
+        return;
+    }
     let workspace = MoveBenchmarkWorkspace::new();
     c.bench_function("spec_move_phase_preflight_plus_apply", |b| {
         iter_move_benchmark(
@@ -228,6 +253,9 @@ fn bench_spec_move_preflight_plus_apply(c: &mut Criterion) {
 }
 
 fn bench_spec_move_rollback(c: &mut Criterion) {
+    if !benchmark_requested("spec_move_phase_rollback") {
+        return;
+    }
     let workspace = MoveBenchmarkWorkspace::new();
     c.bench_function("spec_move_phase_rollback", |b| {
         iter_move_benchmark(
@@ -256,6 +284,9 @@ fn bench_spec_move_rollback(c: &mut Criterion) {
 /// public move API cannot synthesize a genuinely-interrupted move. See the
 /// module doc comment.
 fn bench_spec_move_resume_idempotent_proxy(c: &mut Criterion) {
+    if !benchmark_requested("spec_move_phase_resume_idempotent_proxy") {
+        return;
+    }
     let workspace = MoveBenchmarkWorkspace::new();
     c.bench_function("spec_move_phase_resume_idempotent_proxy", |b| {
         iter_move_benchmark(
@@ -289,26 +320,26 @@ fn bench_spec_move_apply_by_store_size(c: &mut Criterion) {
     const DENSITY: usize = 5;
     for &background_count in &[10usize, 100, 400] {
         let total_store_size = MOVED_COUNT + background_count;
+        let name = format!("spec_move_apply_store_size_{total_store_size}specs");
+        if !benchmark_requested(&name) {
+            continue;
+        }
         let workspace = MoveBenchmarkWorkspace::new();
-        c.bench_function(
-            &format!("spec_move_apply_store_size_{total_store_size}specs"),
-            |b| {
-                iter_move_benchmark(
-                    b,
-                    || {
-                        let (store, target_root, ids) =
-                            build_spec_fixture(&workspace, MOVED_COUNT, DENSITY, background_count);
-                        let plan = active_move_plan(&store, &target_root, &ids[0]);
-                        (store, plan)
-                    },
-                    |(store, plan)| {
-                        let outcome = store
-                            .execute_move_with_journal(&plan)
-                            .expect("execute move");
-                        assert_eq!(outcome.journal.phase, MoveExecutionPhase::Validated);
-                        criterion::black_box(outcome);
-                    },
-                );
+        calibrated_bench_function(
+            c,
+            &name,
+            || {
+                let (store, target_root, ids) =
+                    build_spec_fixture(&workspace, MOVED_COUNT, DENSITY, background_count);
+                let plan = active_move_plan(&store, &target_root, &ids[0]);
+                (store, plan)
+            },
+            |(store, plan)| {
+                let outcome = store
+                    .execute_move_with_journal(&plan)
+                    .expect("execute move");
+                assert_eq!(outcome.journal.phase, MoveExecutionPhase::Validated);
+                criterion::black_box(outcome);
             },
         );
     }

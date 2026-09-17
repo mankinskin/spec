@@ -324,6 +324,8 @@ pub struct MoveSpecRequest {
     pub to_workspace_root: String,
     #[serde(default)]
     pub dry_run: bool,
+    #[serde(default)]
+    pub ids: Option<Vec<String>>,
 }
 
 pub async fn move_spec(
@@ -333,11 +335,51 @@ pub async fn move_spec(
     Json(req): Json<MoveSpecRequest>,
 ) -> Response {
     let store = state.store.lock().await;
+    let to = std::path::PathBuf::from(&req.to_workspace_root);
+    if let Some(ids) = &req.ids {
+        let ids = match ids
+            .iter()
+            .map(|value| store.resolve_id(value))
+            .collect::<Result<Vec<_>, _>>()
+        {
+            Ok(ids) => ids,
+            Err(e) => return spec_err(e, &rid.0),
+        };
+        let plan = match store.plan_move_set(&ids, &to) {
+            Ok(plan) => plan,
+            Err(e) => return spec_err(e, &rid.0),
+        };
+        if req.dry_run || !plan.supported() {
+            return Json(serde_json::json!({
+                "request_id": rid.0,
+                "status": if plan.supported() { "ok" } else { "blocked" },
+                "mode": "plan",
+                "supported": plan.supported(),
+                "ids": plan.entity_ids,
+                "blockers": plan.blockers(),
+                "plan": plan,
+            }))
+            .into_response();
+        }
+        return match store.execute_move_set(&plan) {
+            Ok(outcome) => Json(serde_json::json!({
+                "request_id": rid.0,
+                "status": "ok",
+                "mode": "execute",
+                "ids": outcome.entity_ids,
+                "journal_id": outcome.journal.id,
+                "phase": outcome.journal.phase,
+                "entity_journal_ids": outcome.journal.entity_journal_ids,
+            }))
+            .into_response(),
+            Err(e) => spec_err(e, &rid.0),
+        };
+    }
+
     let spec_id = match store.resolve_id(&id) {
         Ok(uid) => uid,
         Err(e) => return spec_err(e, &rid.0),
     };
-    let to = std::path::PathBuf::from(&req.to_workspace_root);
     let report = match store.plan_move_preflight(&spec_id, &to) {
         Ok(r) => r,
         Err(e) => return spec_err(e, &rid.0),

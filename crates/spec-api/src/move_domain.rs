@@ -16,6 +16,7 @@ use memory_kernel::{
     error::StorageError,
     storage::move_kernel::{
         self, MoveDomain, MoveError, MoveOutcome, MovePlan, MoveReferences, MoveResult,
+        MoveSetOutcome, MoveSetPlan,
     },
 };
 use uuid::Uuid;
@@ -86,7 +87,10 @@ impl MoveDomain for SpecMoveDomain<'_> {
         &self,
         entity_ids: &[Uuid],
     ) -> MoveResult<BTreeMap<Uuid, PathBuf>> {
-        let requested = entity_ids.iter().copied().collect::<std::collections::BTreeSet<_>>();
+        let requested = entity_ids
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>();
         Ok(self
             .store
             .entity_store()
@@ -223,6 +227,40 @@ impl SpecStore {
     pub fn rollback_move_with_journal(&self, journal_id: Uuid) -> Result<MoveOutcome, SpecError> {
         let domain = SpecMoveDomain::new(self);
         move_kernel::rollback_move(&domain, journal_id).map_err(from_move_error)
+    }
+
+    /// Build one normalized read-only preflight plan for a set of specs,
+    /// reusing the domain-neutral kernel's set-level batching (shared store
+    /// root/git topology resolution instead of per-entity recomputation).
+    /// Rejects an empty selection; deterministically dedupes/sorts the rest.
+    pub fn plan_move_set(
+        &self,
+        spec_ids: &[Uuid],
+        target_workspace_root: &Path,
+    ) -> Result<MoveSetPlan, SpecError> {
+        let domain = SpecMoveDomain::new(self);
+        move_kernel::plan_move_set(&domain, spec_ids, target_workspace_root)
+            .map_err(from_move_error)
+    }
+
+    /// Execute a supported normalized set move with one shared lock lifecycle.
+    pub fn execute_move_set(&self, plan: &MoveSetPlan) -> Result<MoveSetOutcome, SpecError> {
+        let domain = SpecMoveDomain::new(self);
+        move_kernel::execute_move_set(&domain, plan).map_err(from_move_error)
+    }
+
+    /// Resume an interrupted set move from its immutable persisted plan,
+    /// identified by the set journal id.
+    pub fn resume_move_set(&self, journal_id: Uuid) -> Result<MoveSetOutcome, SpecError> {
+        let domain = SpecMoveDomain::new(self);
+        move_kernel::resume_move_set(&domain, journal_id).map_err(from_move_error)
+    }
+
+    /// Roll back a completed or partially completed set move, identified by
+    /// the set journal id.
+    pub fn rollback_move_set(&self, journal_id: Uuid) -> Result<MoveSetOutcome, SpecError> {
+        let domain = SpecMoveDomain::new(self);
+        move_kernel::rollback_move_set(&domain, journal_id).map_err(from_move_error)
     }
 }
 
@@ -392,11 +430,187 @@ mod tests {
                 && entry.direction == MoveReferenceDirection::Outbound
                 && !entry.visible_from_destination
         }));
-        assert!(
-            !plan
-                .blockers
-                .iter()
-                .any(|blocker| matches!(blocker, MoveBlocker::InvisibleReference { .. }))
-        );
+        assert!(!plan
+            .blockers
+            .iter()
+            .any(|blocker| matches!(blocker, MoveBlocker::InvisibleReference { .. })));
+    }
+
+    #[test]
+    fn plan_move_set_rejects_empty_selection() {
+        let temp = tempdir().unwrap();
+        let repo = temp.path().join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        run_git(&repo, &["init"]);
+
+        let source_workspace = repo.join("source");
+        let target_workspace = repo.join("target");
+        std::fs::create_dir_all(&source_workspace).unwrap();
+        std::fs::create_dir_all(&target_workspace).unwrap();
+
+        let source_store = SpecStore::init(&source_workspace).unwrap();
+        let _target_store = SpecStore::init(&target_workspace).unwrap();
+
+        let error = source_store
+            .plan_move_set(&[], &target_workspace)
+            .unwrap_err();
+        assert!(error.to_string().contains("empty"));
+    }
+
+    #[test]
+    fn plan_move_set_normalizes_and_dedupes_selection() {
+        let temp = tempdir().unwrap();
+        let repo = temp.path().join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        run_git(&repo, &["init"]);
+
+        let source_workspace = repo.join("source");
+        let target_workspace = repo.join("target");
+        std::fs::create_dir_all(&source_workspace).unwrap();
+        std::fs::create_dir_all(&target_workspace).unwrap();
+
+        let mut source_store = SpecStore::init(&source_workspace).unwrap();
+        let _target_store = SpecStore::init(&target_workspace).unwrap();
+
+        let first = crate::manifest::SpecManifest::new("track/first", "First", "spec-api");
+        let second = crate::manifest::SpecManifest::new("track/second", "Second", "spec-api");
+        let first_id = source_store.create(&first, "first body", None).unwrap();
+        let second_id = source_store.create(&second, "second body", None).unwrap();
+        source_store.scan(true).unwrap();
+
+        // Deliberately unsorted, with a duplicate entry.
+        let selection = [second_id, first_id, second_id];
+        let plan = source_store
+            .plan_move_set(&selection, &target_workspace)
+            .unwrap();
+
+        let mut expected = vec![first_id, second_id];
+        expected.sort();
+        assert_eq!(plan.entity_ids, expected);
+        assert_eq!(plan.entity_plans.len(), 2);
+    }
+
+    #[test]
+    fn execute_move_set_moves_all_specs_with_journal_outcome() {
+        let temp = tempdir().unwrap();
+        let repo = temp.path().join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        run_git(&repo, &["init"]);
+
+        let source_workspace = repo.join("source");
+        let target_workspace = repo.join("target");
+        std::fs::create_dir_all(&source_workspace).unwrap();
+        std::fs::create_dir_all(&target_workspace).unwrap();
+
+        let mut source_store = SpecStore::init(&source_workspace).unwrap();
+        let _target_store = SpecStore::init(&target_workspace).unwrap();
+
+        let first = crate::manifest::SpecManifest::new("track/set-a", "Set A", "spec-api");
+        let second = crate::manifest::SpecManifest::new("track/set-b", "Set B", "spec-api");
+        let first_id = source_store.create(&first, "a body", None).unwrap();
+        let second_id = source_store.create(&second, "b body", None).unwrap();
+        source_store.scan(true).unwrap();
+
+        let mut plan = source_store
+            .plan_move_set(&[first_id, second_id], &target_workspace)
+            .unwrap();
+        for entity_plan in &mut plan.entity_plans {
+            entity_plan.blockers.retain(|blocker| {
+                !matches!(
+                    blocker,
+                    MoveBlocker::PathReferenceScanUnavailable { .. }
+                        | MoveBlocker::DirtyTrackedFiles { .. }
+                )
+            });
+        }
+        assert!(plan.supported());
+
+        let outcome = source_store.execute_move_set(&plan).unwrap();
+        assert_eq!(outcome.entity_ids, plan.entity_ids);
+        assert_eq!(outcome.entity_outcomes.len(), 2);
+        for entity_outcome in &outcome.entity_outcomes {
+            assert_eq!(entity_outcome.journal.phase, MoveExecutionPhase::Validated);
+        }
+
+        let src = SpecStore::open(&source_workspace).unwrap();
+        let dst = SpecStore::open(&target_workspace).unwrap();
+        for spec_id in [first_id, second_id] {
+            assert!(src.entity_store().get_indexed(&spec_id).unwrap().is_none());
+            assert!(dst.entity_store().get_indexed(&spec_id).unwrap().is_some());
+        }
+    }
+
+    #[test]
+    fn plan_move_set_reports_missing_target_store_blocker() {
+        let temp = tempdir().unwrap();
+        let repo = temp.path().join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        run_git(&repo, &["init"]);
+
+        let source_workspace = repo.join("source");
+        let target_workspace = repo.join("target");
+        std::fs::create_dir_all(&source_workspace).unwrap();
+        std::fs::create_dir_all(&target_workspace).unwrap();
+
+        let mut source_store = SpecStore::init(&source_workspace).unwrap();
+        // Deliberately do not initialize the target store.
+
+        let spec = crate::manifest::SpecManifest::new("track/no-target", "No Target", "spec-api");
+        let spec_id = source_store.create(&spec, "body", None).unwrap();
+        source_store.scan(true).unwrap();
+
+        let plan = source_store
+            .plan_move_set(&[spec_id], &target_workspace)
+            .unwrap();
+
+        assert!(!plan.supported());
+        assert!(plan.entity_plans[0]
+            .blockers
+            .iter()
+            .any(|blocker| matches!(blocker, MoveBlocker::MissingTargetStore { .. })));
+    }
+
+    #[test]
+    fn rollback_move_set_restores_specs_by_journal_id() {
+        let temp = tempdir().unwrap();
+        let repo = temp.path().join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        run_git(&repo, &["init"]);
+
+        let source_workspace = repo.join("source");
+        let target_workspace = repo.join("target");
+        std::fs::create_dir_all(&source_workspace).unwrap();
+        std::fs::create_dir_all(&target_workspace).unwrap();
+
+        let mut source_store = SpecStore::init(&source_workspace).unwrap();
+        let _target_store = SpecStore::init(&target_workspace).unwrap();
+
+        let spec =
+            crate::manifest::SpecManifest::new("track/rollback-set", "Rollback Set", "spec-api");
+        let spec_id = source_store.create(&spec, "body", None).unwrap();
+        source_store.scan(true).unwrap();
+
+        let mut plan = source_store
+            .plan_move_set(&[spec_id], &target_workspace)
+            .unwrap();
+        for entity_plan in &mut plan.entity_plans {
+            entity_plan.blockers.retain(|blocker| {
+                !matches!(
+                    blocker,
+                    MoveBlocker::PathReferenceScanUnavailable { .. }
+                        | MoveBlocker::DirtyTrackedFiles { .. }
+                )
+            });
+        }
+        let outcome = source_store.execute_move_set(&plan).unwrap();
+        let journal_id = outcome.journal.id;
+
+        let rolled_back = source_store.rollback_move_set(journal_id).unwrap();
+        assert_eq!(rolled_back.journal.id, journal_id);
+
+        let src = SpecStore::open(&source_workspace).unwrap();
+        let dst = SpecStore::open(&target_workspace).unwrap();
+        assert!(src.entity_store().get_indexed(&spec_id).unwrap().is_some());
+        assert!(dst.entity_store().get_indexed(&spec_id).unwrap().is_none());
     }
 }

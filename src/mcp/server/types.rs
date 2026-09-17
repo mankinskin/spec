@@ -1,9 +1,6 @@
 use std::collections::BTreeMap;
 
-use rmcp::schemars::{
-    self,
-    JsonSchema,
-};
+use rmcp::schemars::{self, JsonSchema};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -195,8 +192,12 @@ pub struct SpecMoveInput {
     /// Optional workspace selector (`default`, workspace root, or .spec store path).
     #[serde(default)]
     pub workspace: Option<String>,
-    /// Spec UUID, prefix, or slug to move.
-    pub id: String,
+    /// Spec UUID, prefix, or slug to move when `ids` is absent.
+    #[serde(default)]
+    pub id: Option<String>,
+    /// Optional normalized set of spec UUIDs, prefixes, or slugs to move.
+    #[serde(default)]
+    pub ids: Option<Vec<String>>,
     /// Destination workspace root.
     pub to_workspace_root: String,
 }
