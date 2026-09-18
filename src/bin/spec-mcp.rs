@@ -38,14 +38,7 @@ fn resolve_index_root() -> PathBuf {
     if let Ok(path) = std::env::var("TICKET_INDEX_ROOT") {
         return PathBuf::from(path);
     }
-    let cwd_spec = std::env::current_dir().ok().map(|dir| dir.join(".spec"));
-    if let Some(path) = cwd_spec.filter(|path| path.exists()) {
-        return path;
-    }
-    if let Ok(home) =
-        std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE"))
-    {
-        return PathBuf::from(home).join(".spec-index");
-    }
-    PathBuf::from(".spec")
+    std::env::current_dir()
+        .map(|dir| memory_kernel::workspace::resolve_store_root_from(&dir, ".spec"))
+        .unwrap_or_else(|_| PathBuf::from(".workflow-tools/spec"))
 }

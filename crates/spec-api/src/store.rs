@@ -79,31 +79,6 @@ const SPEC_INDEX_DIR: &str = ".spec";
 const GENERATED_SPEC_ARTIFACTS_FILE: &str = "generated.toml";
 const SPEC_STORE_TRACE_TARGET: &str = "spec_api::store";
 
-fn resolve_spec_store_root(start: &Path) -> PathBuf {
-    let mut dir = if start.is_dir() {
-        start.to_path_buf()
-    } else {
-        start.parent().unwrap_or(start).to_path_buf()
-    };
-
-    loop {
-        let candidate = dir.join(SPEC_INDEX_DIR);
-        if candidate.is_dir() {
-            return candidate;
-        }
-
-        let canonical = dir.join(".workflow-tools").join("spec");
-        if canonical.is_dir() {
-            return canonical;
-        }
-
-        match dir.parent() {
-            Some(parent) => dir = parent.to_path_buf(),
-            None => return start.to_path_buf(),
-        }
-    }
-}
-
 fn build_search_content(
     spec: &SpecManifest,
     body: &str,

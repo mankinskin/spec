@@ -43,12 +43,7 @@ async fn main() {
         .or_else(|| std::env::var("TICKET_INDEX_ROOT").ok().map(PathBuf::from))
         .unwrap_or_else(|| {
             let cwd = std::env::current_dir().expect("cwd");
-            let spec_dir = cwd.join(".spec");
-            if spec_dir.exists() {
-                spec_dir
-            } else {
-                cwd.join(".ticket")
-            }
+            memory_kernel::workspace::resolve_store_root_from(&cwd, ".spec")
         });
 
     let store = SpecStore::open_or_init(&root).unwrap_or_else(|error| {
