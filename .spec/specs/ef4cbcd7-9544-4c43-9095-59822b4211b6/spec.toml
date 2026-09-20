@@ -1,0 +1,23 @@
+id = "ef4cbcd7-9544-4c43-9095-59822b4211b6"
+created_at = "2026-08-23T00:00:00+00:00"
+title = "Specification Query And Link Resolution CLI"
+state = "draft"
+component = "spec"
+parent = "f1b8f01a-c7da-4a71-97c5-39519a7d7f38"
+scope = "internal"
+slug = "spec-system/component-oriented-contracts/spec-query-cli"
+type = "specification"
+[[code_refs]]
+file = "workflow-tools/spec/src/cli/commands/crud.rs"
+symbol = "cmd_get"
+kind = "function"
+line_start = 70
+line_end = 98
+description = "Existing manifest and optional body output baseline."
+[[code_refs]]
+file = "workflow-tools/spec/src/cli/commands/refs.rs"
+symbol = "cmd_refs"
+kind = "function"
+line_start = 17
+line_end = 80
+description = "Existing code-reference-only resolver baseline."
