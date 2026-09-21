@@ -192,7 +192,10 @@ pub(super) fn render_readme_tree_lines(
 }
 
 pub(super) fn rel_from_readme(path: &str) -> String {
-    if let Some(stripped) = path.strip_prefix(".spec/") {
+    if let Some(stripped) = path
+        .strip_prefix(".workflow-tools/spec/")
+        .or_else(|| path.strip_prefix(".spec/"))
+    {
         format!("./{stripped}")
     } else {
         format!("./{path}")

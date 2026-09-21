@@ -2,9 +2,9 @@
 //!
 //! Reads spec manifests and produces the three committed catalog artifacts:
 //!
-//! - `.spec/README.md` — a human-browsable catalog grouped by component, where
+//! - `.workflow-tools/spec/README.md` — a human-browsable catalog grouped by component, where
 //!   each entry surfaces its place in the parent/child hierarchy.
-//! - `.spec/index.toon` — the machine-readable [`IndexSidecar`] (D8) whose
+//! - `.workflow-tools/spec/index.toon` — the machine-readable [`IndexSidecar`] (D8) whose
 //!   entries carry typed parent/child [`IndexRef`]s (the headline hierarchy
 //!   feature of this generator).
 //! - `.agents/spec-catalog.md` — an agent-hook pointer at the catalog (D1).
@@ -47,7 +47,7 @@ use memory_kernel::{
 
 use crate::manifest::SpecManifest;
 
-/// Provenance comment written at the top of `.spec/README.md`.
+/// Provenance comment written at the top of `.workflow-tools/spec/README.md`.
 ///
 /// Uses an `-index` suffixed prefix so index/catalog files are never confused
 /// with spec *content* files (which carry `spec-api:*` provenance) — decision
@@ -66,7 +66,7 @@ pub const SPEC_INDEX_AGENT_HOOK_COMMENT: &str =
 /// Repository-relative path of the generated agent-hook file (D1).
 pub const SPEC_INDEX_AGENT_HOOK_PATH: &str = ".agents/spec-catalog.md";
 
-/// Root folder (under `.spec/`) that contains one markdown tree node per spec.
+/// Root folder (under `.workflow-tools/spec/`) that contains one markdown tree node per spec.
 pub const SPEC_INDEX_TREE_DIR: &str = "tree";
 
 /// Per-entry provenance comment written at the top of generated tree pages.
@@ -90,13 +90,13 @@ pub struct SpecCatalogSource<'a> {
 
 /// The generated spec catalog artifacts, ready for the caller to write or diff.
 pub struct SpecCatalogArtifacts {
-    /// Sidecar for `.spec/index.toon`. Entries are sealed and sorted by id.
+    /// Sidecar for `.workflow-tools/spec/index.toon`. Entries are sealed and sorted by id.
     pub sidecar: IndexSidecar,
-    /// Rendered `.spec/README.md` catalog (LF newlines, single trailing newline).
+    /// Rendered `.workflow-tools/spec/README.md` catalog (LF newlines, single trailing newline).
     pub readme_markdown: String,
     /// Rendered `.agents/spec-catalog.md` agent-hook content.
     pub agent_hook_markdown: String,
-    /// Rendered per-entry markdown tree under `.spec/tree/**/README.md`.
+    /// Rendered per-entry markdown tree under `.workflow-tools/spec/tree/**/README.md`.
     ///
     /// Keys are workspace-relative file paths with `/` separators.
     pub tree_markdown: BTreeMap<String, String>,
@@ -110,7 +110,7 @@ fn epoch() -> DateTime<Utc> {
 /// Generate the full spec hierarchy catalog from joined sources.
 ///
 /// `store_dir` is the spec store folder relative to the workspace root
-/// (normally `.spec`). Entries are produced one-per-spec, sealed, and sorted by
+/// (normally `.workflow-tools/spec`). Entries are produced one-per-spec, sealed, and sorted by
 /// id; each entry carries typed parent/child [`IndexRef`]s derived from the
 /// `parent` pointers across the whole source set.
 pub fn generate_spec_catalog(

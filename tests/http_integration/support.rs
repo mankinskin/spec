@@ -8,13 +8,7 @@ use spec_api::{
 };
 
 fn open_or_init_store(dir: &std::path::Path) -> SpecStore {
-    let store_root = dir.join(".spec");
-    if store_root.exists() {
-        SpecStore::open(&store_root).expect("open spec store")
-    } else {
-        std::fs::create_dir_all(&store_root).expect("create spec store root");
-        SpecStore::init(&store_root).expect("init spec store")
-    }
+    SpecStore::open_or_init(dir).expect("open or init spec store")
 }
 
 fn ensure_scan_root(

@@ -153,7 +153,7 @@ mod tests {
         workspace_root: &std::path::Path,
         file_root: &std::path::Path,
     ) -> (SpecStore, String) {
-        let store_root = workspace_root.join(".spec");
+        let store_root = workspace_root.join(".workflow-tools").join("spec");
         fs::create_dir_all(&store_root).unwrap();
         fs::create_dir_all(file_root.join("src")).unwrap();
         fs::write(file_root.join("src/lib.rs"), "pub fn target() {}\n")

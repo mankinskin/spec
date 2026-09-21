@@ -441,7 +441,7 @@ impl SpecStore {
         target_root: Option<&Path>,
     ) -> Result<PathBuf, StorageError> {
         let Some(target_root) = target_root else {
-            // Canonical: write into the workspace's own .spec/specs/ directory
+            // Canonical: write into the workspace's own .workflow-tools/spec/specs/ directory
             // (resolved via the index_root), ignoring any registered scan roots.
             // Callers that want to place specs elsewhere must pass an explicit
             // `target_root`.

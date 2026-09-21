@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn add_root_creates_missing_directory() {
         let dir = tempdir().unwrap();
-        let index_root = dir.path().join(".spec");
+        let index_root = dir.path().join(".workflow-tools").join("spec");
         let store = SpecStore::init(&index_root).unwrap();
         let root = index_root.join("specs");
 

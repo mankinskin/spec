@@ -466,7 +466,7 @@ mod tests {
     #[tokio::test]
     async fn mcp_tools_round_trip_structured_contract_fields() {
         let dir = tempdir().unwrap();
-        let index_root = dir.path().join(".spec");
+        let index_root = dir.path().join(".workflow-tools").join("spec");
         SpecStore::init(&index_root).unwrap();
         let server = SpecServer::new(index_root.clone());
         let fixture = load_contract_parity_fixture();

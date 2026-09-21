@@ -25,11 +25,12 @@ use crate::cli::{
     StoreIndexArgs,
 };
 
-const STORE_DIR: &str = ".spec";
+const STORE_DIR: &str = ".workflow-tools/spec";
 
 /// Generate (or check) the committed spec catalog artifacts:
-/// `.spec/README.md`, `.spec/index.toon`, `.agents/spec-catalog.md`, and the
-/// full-depth per-entry markdown tree under `.spec/tree/**/README.md`.
+/// `.workflow-tools/spec/README.md`, `.workflow-tools/spec/index.toon`,
+/// `.agents/spec-catalog.md`, and the full-depth per-entry markdown tree under
+/// `.workflow-tools/spec/tree/**/README.md`.
 pub(crate) fn cmd_store_index(
     args: StoreIndexArgs,
     store: &SpecStore,

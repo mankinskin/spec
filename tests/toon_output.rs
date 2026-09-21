@@ -5,7 +5,7 @@ use tempfile::tempdir;
 #[test]
 fn init_supports_toon_output() {
     let dir = tempdir().expect("temp dir");
-    let index_root = dir.path().join(".spec");
+    let index_root = dir.path().join(".workflow-tools").join("spec");
 
     let out = Command::new(env!("CARGO_BIN_EXE_spec"))
         .arg("--toon")

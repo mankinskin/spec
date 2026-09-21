@@ -77,10 +77,8 @@ pub(crate) fn cmd_sync_generated(
         }));
     }
 
-    // Reuse the normal manifest update path so body-backed search results and
-    // history handling stay aligned with the rest of spec-cli.
-    let refreshed =
-        store.update(&args.id, std::collections::BTreeMap::new(), None)?;
+    store.scan(true)?;
+    let refreshed = store.get(&args.id)?;
 
     Ok(json!({
         "command": "sync_generated",
@@ -190,11 +188,7 @@ fn workspace_root_for_indexed_spec(
 
 fn workspace_root_from_scan_root(scan_root: &Path) -> Option<PathBuf> {
     let parent = scan_root.parent()?;
-    if parent.file_name().and_then(|name| name.to_str()) == Some(".spec") {
-        parent.parent().map(Path::to_path_buf)
-    } else {
-        Some(parent.to_path_buf())
-    }
+    workspace_root_from_store_root(parent)
 }
 
 fn workspace_root_from_store_root(store_root: &Path) -> Option<PathBuf> {
@@ -211,12 +205,16 @@ fn workspace_root_from_store_root(store_root: &Path) -> Option<PathBuf> {
 
 fn workspace_root_from_spec_path(spec_path: &Path) -> Option<PathBuf> {
     spec_path.ancestors().find_map(|ancestor| {
-        if ancestor.file_name().and_then(|name| name.to_str()) == Some(".spec")
-        {
-            ancestor.parent().map(Path::to_path_buf)
-        } else {
-            None
-        }
+        let name = ancestor.file_name().and_then(|name| name.to_str());
+        let is_canonical = name == Some("spec")
+            && ancestor
+                .parent()
+                .and_then(Path::file_name)
+                .and_then(|name| name.to_str())
+                == Some(".workflow-tools");
+        (name == Some(".spec") || is_canonical)
+            .then(|| workspace_root_from_store_root(ancestor))
+            .flatten()
     })
 }
 

@@ -155,7 +155,7 @@ pub(super) fn parse_generated_artifact_location(
         {
             return Err(invalid_generated_artifact_path(
                 artifact_path,
-                "expected .spec/specs/<uuid>/body.md",
+                "expected .workflow-tools/spec/specs/<uuid>/body.md",
             ));
         }
 
@@ -218,7 +218,7 @@ pub(super) fn parse_generated_artifact_location(
     {
         return Err(invalid_generated_artifact_path(
             artifact_path,
-            "expected .spec/specs/<uuid>/sections/<name>.md",
+            "expected .workflow-tools/spec/specs/<uuid>/sections/<name>.md",
         ));
     }
 

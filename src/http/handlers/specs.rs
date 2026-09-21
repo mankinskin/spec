@@ -507,8 +507,8 @@ mod tests {
     fn create_test_app() -> (tempfile::TempDir, axum::Router) {
         let dir = tempdir().unwrap();
         let repo = dir.path().join("repo");
-        fs::create_dir_all(repo.join(".spec")).unwrap();
-        let store = SpecStore::init(&repo.join(".spec")).unwrap();
+        fs::create_dir_all(repo.join(".workflow-tools").join("spec")).unwrap();
+        let store = SpecStore::init(&repo).unwrap();
         (dir, build_router(SpecAppState::new(store)))
     }
 

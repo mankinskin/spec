@@ -15,8 +15,8 @@ use crate::cli::CliRunError;
 
 use ticket_api::model::ticket::TicketManifestExt;
 
-/// Resolve a `TicketRef.store_root` (repo-root-relative, e.g. ".ticket" or
-/// "memory-api/.ticket") against the workspace root that `spec validate-links`
+/// Resolve a `TicketRef.store_root` (repo-root-relative, e.g.
+/// ".workflow-tools/ticket" or "memory-api/.workflow-tools/ticket") against the workspace root that `spec validate-links`
 /// was invoked against.
 fn resolve_referenced_root(
     workspace_root: &Path,
@@ -45,7 +45,8 @@ pub(crate) fn cmd_validate_links(
     store: &SpecStore,
     workspace_root: &Path,
 ) -> Result<Value, CliRunError> {
-    let canonical_ticket_root = workspace_root.join(".ticket");
+    let canonical_ticket_root =
+        memory_kernel::workspace::canonical_store_root(workspace_root, ".ticket");
     let all = store.entity_store().list_indexed()?;
     let mut findings: Vec<Value> = Vec::new();
     let mut checked = 0usize;
@@ -178,9 +179,9 @@ mod tests {
         let workspace_root = workspace.path();
 
         let ticket_store =
-            TicketStore::init(&workspace_root.join(".ticket")).unwrap();
+            TicketStore::init(&workspace_root).unwrap();
         let mut spec_store =
-            SpecStore::init(&workspace_root.join(".spec")).unwrap();
+            SpecStore::init(&workspace_root).unwrap();
 
         let ticket_id = ticket_store
             .create(
@@ -204,7 +205,7 @@ mod tests {
         spec_manifest.set_related_tickets(vec![TicketRef {
             ticket_id,
             workspace: "default".to_string(),
-            store_root: "nested/.ticket".to_string(),
+            store_root: "nested/.workflow-tools/ticket".to_string(),
         }]);
         spec_store.create(&spec_manifest, "body", None).unwrap();
 
@@ -223,9 +224,9 @@ mod tests {
         let workspace = TempDir::new().unwrap();
         let workspace_root = workspace.path();
 
-        TicketStore::init(&workspace_root.join(".ticket")).unwrap();
+        TicketStore::init(&workspace_root).unwrap();
         let mut spec_store =
-            SpecStore::init(&workspace_root.join(".spec")).unwrap();
+            SpecStore::init(&workspace_root).unwrap();
 
         let mut spec_manifest = SpecManifest::new(
             "traceability/dangling-ticket-ref",
@@ -235,7 +236,7 @@ mod tests {
         spec_manifest.set_related_tickets(vec![TicketRef {
             ticket_id: uuid::Uuid::new_v4(),
             workspace: "default".to_string(),
-            store_root: ".ticket".to_string(),
+            store_root: ".workflow-tools/ticket".to_string(),
         }]);
         spec_store.create(&spec_manifest, "body", None).unwrap();
 
@@ -253,9 +254,9 @@ mod tests {
         let workspace_root = workspace.path();
 
         let ticket_store =
-            TicketStore::init(&workspace_root.join(".ticket")).unwrap();
+            TicketStore::init(&workspace_root).unwrap();
         let mut spec_store =
-            SpecStore::init(&workspace_root.join(".spec")).unwrap();
+            SpecStore::init(&workspace_root).unwrap();
 
         let mut spec_manifest = SpecManifest::new(
             "traceability/consistent-link-spec-side",
@@ -279,7 +280,7 @@ mod tests {
         spec_manifest.set_related_tickets(vec![TicketRef {
             ticket_id,
             workspace: "default".to_string(),
-            store_root: ".ticket".to_string(),
+            store_root: ".workflow-tools/ticket".to_string(),
         }]);
         spec_store.create(&spec_manifest, "body", None).unwrap();
 
@@ -289,7 +290,7 @@ mod tests {
             serde_json::to_value(vec![SpecRef {
                 spec_id,
                 workspace: "default".to_string(),
-                store_root: ".spec".to_string(),
+                store_root: ".workflow-tools/spec".to_string(),
             }])
             .unwrap(),
         );

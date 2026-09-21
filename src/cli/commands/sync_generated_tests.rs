@@ -22,7 +22,7 @@ fn create_sync_fixture()
     let child_root = repo_root.join("memory-api");
     fs::create_dir_all(&child_root).unwrap();
     fs::create_dir_all(child_root.join(".rule")).unwrap();
-    fs::create_dir_all(child_root.join(".spec")).unwrap();
+    fs::create_dir_all(child_root.join(".workflow-tools").join("spec")).unwrap();
 
     let mut rule_store = RuleStore::init(&child_root).unwrap();
 

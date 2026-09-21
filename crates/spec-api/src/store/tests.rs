@@ -63,7 +63,7 @@ fn make_v2_spec(
 fn setup_local_store() -> (TempDir, PathBuf, PathBuf, SpecStore) {
     let tmp = TempDir::new().unwrap();
     let repo = tmp.path().join("repo");
-    let store_root = repo.join(".spec");
+    let store_root = memory_kernel::workspace::canonical_store_root(&repo, ".spec");
     fs::create_dir_all(&store_root).unwrap();
     let store = SpecStore::init(&repo).unwrap();
     (tmp, repo, store_root, store)
@@ -346,8 +346,13 @@ fn health_reports_cross_workspace_and_dangling_depends_on_edges() {
     )
     .unwrap();
 
-    let mut parent_store = SpecStore::init(&repo.join(".spec")).unwrap();
-    let mut child_store = SpecStore::init(&child_repo.join(".spec")).unwrap();
+    let mut parent_store =
+        SpecStore::init(&memory_kernel::workspace::canonical_store_root(&repo, ".spec")).unwrap();
+    let mut child_store = SpecStore::init(&memory_kernel::workspace::canonical_store_root(
+        &child_repo,
+        ".spec",
+    ))
+    .unwrap();
 
     let parent = make_spec("root/parent", "Parent");
     let parent_id = parent_store.create(&parent, "body", None).unwrap();
@@ -788,7 +793,9 @@ fn create_normalizes_workspace_target_root_into_local_store() {
     let spec = make_spec("root/overview", "Overview");
     let id = store.create(&spec, "body", Some(&repo)).unwrap();
 
-    let expected = repo.join(".spec").join("specs").join(id.to_string());
+    let expected = memory_kernel::workspace::canonical_store_root(&repo, ".spec")
+        .join("specs")
+        .join(id.to_string());
     let indexed = store.entity_store().get_indexed(&id).unwrap().unwrap();
 
     assert_eq!(indexed.path, expected);
@@ -803,7 +810,9 @@ fn create_normalizes_store_root_into_specs_scan_root() {
     let spec = make_spec("root/store-root", "Store Root");
     let id = store.create(&spec, "body", Some(&store_root)).unwrap();
 
-    let expected = repo.join(".spec").join("specs").join(id.to_string());
+    let expected = memory_kernel::workspace::canonical_store_root(&repo, ".spec")
+        .join("specs")
+        .join(id.to_string());
     let indexed = store.entity_store().get_indexed(&id).unwrap().unwrap();
 
     assert_eq!(indexed.path, expected);

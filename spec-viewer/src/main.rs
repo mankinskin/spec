@@ -135,12 +135,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Spec Viewer starting (single-process mode)"
     );
 
-    // Resolve the spec index root.  Falls back to the `.spec` directory in the
+    // Resolve the spec index root. Falls back to the canonical store in the
     // current working directory if --index-root is not provided.
     let index_root = options.index_root.unwrap_or_else(|| {
-        std::env::current_dir()
-            .unwrap_or_else(|_| PathBuf::from("."))
-            .join(".spec")
+        let workspace =
+            std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        memory_kernel::workspace::canonical_store_root(&workspace, ".spec")
     });
 
     info!(index_root = %index_root.display(), "Using spec index root");

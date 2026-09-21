@@ -290,8 +290,7 @@ async fn move_spec_dry_run_returns_supported_plan() {
 
     let id = seed_spec(repo, "move-me", "Move Target");
     let target_workspace = repo.join("target");
-    std::fs::create_dir_all(target_workspace.join(".spec")).unwrap();
-    SpecStore::init(&target_workspace.join(".spec")).unwrap();
+    SpecStore::init(&target_workspace).unwrap();
 
     let body = serde_json::json!({
         "to_workspace_root": target_workspace,

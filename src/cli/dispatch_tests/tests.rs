@@ -16,6 +16,10 @@ struct ContractParityFixture {
     expected_health_issue: String,
 }
 
+fn spec_store_root(workspace_root: &Path) -> PathBuf {
+    memory_kernel::workspace::canonical_store_root(workspace_root, ".spec")
+}
+
 fn create_nested_spec_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, String)
 {
     use spec_api::{
@@ -29,13 +33,13 @@ fn create_nested_spec_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, String)
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
     let child = repo.join("memory-api");
-    std::fs::create_dir_all(repo.join(".spec")).unwrap();
-    std::fs::create_dir_all(child.join(".spec")).unwrap();
+    std::fs::create_dir_all(spec_store_root(&repo)).unwrap();
+    std::fs::create_dir_all(spec_store_root(&child)).unwrap();
     std::fs::create_dir_all(child.join("src")).unwrap();
     std::fs::write(child.join("src/lib.rs"), "pub fn nested() {}\n").unwrap();
 
-    let _root_store = SpecStore::init(&repo.join(".spec")).unwrap();
-    let mut child_store = SpecStore::init(&child.join(".spec")).unwrap();
+    let _root_store = SpecStore::init(&spec_store_root(&repo)).unwrap();
+    let mut child_store = SpecStore::init(&spec_store_root(&child)).unwrap();
     let mut manifest = SpecManifest::new(
         "memory-api/nested-spec",
         "Nested spec",
@@ -59,8 +63,8 @@ fn create_nested_spec_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, String)
 fn create_cli_spec_fixture() -> (tempfile::TempDir, PathBuf) {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
-    std::fs::create_dir_all(repo.join(".spec")).unwrap();
-    SpecStore::init(&repo.join(".spec")).unwrap();
+    std::fs::create_dir_all(spec_store_root(&repo)).unwrap();
+    SpecStore::init(&spec_store_root(&repo)).unwrap();
     (dir, repo)
 }
 
@@ -87,23 +91,12 @@ fn resolve_index_root_prefers_nearest_parent_spec_dir() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
     let nested = repo.join("src").join("api");
-    std::fs::create_dir_all(repo.join(".spec")).unwrap();
+    std::fs::create_dir_all(spec_store_root(&repo)).unwrap();
     std::fs::create_dir_all(&nested).unwrap();
 
     let resolved = resolve_index_root_from(None, None, None, Some(&nested)).unwrap();
 
-    assert_eq!(resolved, repo.join(".spec"));
-}
-
-#[test]
-fn resolve_index_root_defaults_to_current_directory_spec_dir() {
-    let dir = tempdir().unwrap();
-    let repo = dir.path().join("repo");
-    std::fs::create_dir_all(&repo).unwrap();
-
-    let resolved = resolve_index_root_from(None, None, None, Some(&repo)).unwrap();
-
-    assert_eq!(resolved, repo.join(".spec"));
+    assert_eq!(resolved, spec_store_root(&repo));
 }
 
 #[test]
@@ -111,13 +104,29 @@ fn resolve_index_root_prefers_explicit_workspace_root() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
     let child = repo.join("memory-api");
-    std::fs::create_dir_all(repo.join(".spec")).unwrap();
-    std::fs::create_dir_all(child.join(".spec")).unwrap();
+    std::fs::create_dir_all(spec_store_root(&repo)).unwrap();
+    std::fs::create_dir_all(spec_store_root(&child)).unwrap();
 
     let resolved =
         resolve_index_root_from(None, Some(&child), None, Some(&repo)).unwrap();
 
-    assert_eq!(resolved, child.join(".spec"));
+    assert_eq!(resolved, spec_store_root(&child));
+}
+
+#[test]
+fn mutating_command_with_workspace_uses_canonical_store() {
+    let dir = tempdir().unwrap();
+    let repo = dir.path().join("repo");
+    std::fs::create_dir_all(&repo).unwrap();
+
+    let resolved = resolve_index_root_for_command(
+        &SpecCommandCli::Scan(crate::cli::ScanArgs { force: true }),
+        None,
+        Some(&repo),
+    )
+    .unwrap();
+
+    assert_eq!(resolved, repo.join(".workflow-tools").join("spec"));
 }
 
 #[test]
@@ -125,9 +134,9 @@ fn resolve_workspace_root_prefers_explicit_workspace_root() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
     let child = repo.join("memory-api");
-    std::fs::create_dir_all(child.join(".spec")).unwrap();
+    std::fs::create_dir_all(spec_store_root(&child)).unwrap();
 
-    let resolved = resolve_workspace_root(&child.join(".spec"), Some(&child));
+    let resolved = resolve_workspace_root(&spec_store_root(&child), Some(&child));
 
     assert_eq!(resolved, child);
 }
@@ -136,9 +145,9 @@ fn resolve_workspace_root_prefers_explicit_workspace_root() {
 fn resolve_workspace_root_defaults_to_parent_of_hidden_store() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
-    std::fs::create_dir_all(repo.join(".spec")).unwrap();
+    std::fs::create_dir_all(spec_store_root(&repo)).unwrap();
 
-    let resolved = resolve_workspace_root(&repo.join(".spec"), None);
+    let resolved = resolve_workspace_root(&spec_store_root(&repo), None);
 
     assert_eq!(resolved, repo);
 }
@@ -189,10 +198,10 @@ fn dispatch_move_dry_run_returns_supported_preflight_plan() {
     run_git(&repo, &["init"]);
 
     let target_workspace = repo.join("target");
-    std::fs::create_dir_all(target_workspace.join(".spec")).unwrap();
-    SpecStore::init(&target_workspace.join(".spec")).unwrap();
+    std::fs::create_dir_all(spec_store_root(&target_workspace)).unwrap();
+    SpecStore::init(&spec_store_root(&target_workspace)).unwrap();
 
-    let mut store = SpecStore::open(&repo.join(".spec")).unwrap();
+    let mut store = SpecStore::open(&spec_store_root(&repo)).unwrap();
     let manifest =
         spec_api::SpecManifest::new("sample/spec", "Sample spec", "spec-cli");
     let spec_id = store.create(&manifest, "body", None).unwrap();
@@ -206,7 +215,7 @@ fn dispatch_move_dry_run_returns_supported_preflight_plan() {
             resume: None,
             rollback: None,
         }),
-        Some(&repo.join(".spec")),
+        Some(&spec_store_root(&repo)),
         Some(&repo),
         true,
     )
@@ -224,10 +233,10 @@ fn dispatch_move_dry_run_accepts_normalized_spec_set() {
     run_git(&repo, &["init"]);
 
     let target_workspace = repo.join("target");
-    std::fs::create_dir_all(target_workspace.join(".spec")).unwrap();
-    SpecStore::init(&target_workspace.join(".spec")).unwrap();
+    std::fs::create_dir_all(spec_store_root(&target_workspace)).unwrap();
+    SpecStore::init(&spec_store_root(&target_workspace)).unwrap();
 
-    let mut store = SpecStore::open(&repo.join(".spec")).unwrap();
+    let mut store = SpecStore::open(&spec_store_root(&repo)).unwrap();
     let first = store
         .create(
             &spec_api::SpecManifest::new("sample/first", "First", "spec-cli"),
@@ -252,7 +261,7 @@ fn dispatch_move_dry_run_accepts_normalized_spec_set() {
             resume: None,
             rollback: None,
         }),
-        Some(&repo.join(".spec")),
+        Some(&spec_store_root(&repo)),
         Some(&repo),
         true,
     )
@@ -278,7 +287,7 @@ fn dispatch_scan_registers_child_spec_from_explicit_workspace_root() {
 
     assert_eq!(payload["command"], "scan");
 
-    let root_store = SpecStore::open(&repo.join(".spec")).unwrap();
+    let root_store = SpecStore::open(&spec_store_root(&repo)).unwrap();
     let search_payload = dispatch_read_only(
         SpecCommandCli::Search(crate::cli::SearchArgs {
             query: "Nested spec".to_string(),
@@ -297,7 +306,7 @@ fn dispatch_scan_registers_child_spec_from_explicit_workspace_root() {
 #[test]
 fn dispatch_refs_reads_child_spec_after_scan_root_augmentation() {
     let (_dir, repo, child, spec_id) = create_nested_spec_fixture();
-    let mut root_store = SpecStore::init(&repo.join(".spec")).unwrap();
+    let mut root_store = SpecStore::init(&spec_store_root(&repo)).unwrap();
 
     let reindex = register_descendant_scan_roots(&root_store, &repo).unwrap();
     root_store.scan(reindex).unwrap();
@@ -325,7 +334,7 @@ fn dispatch_refs_reads_child_spec_after_scan_root_augmentation() {
 #[test]
 fn dispatch_search_reads_child_spec_after_scan_root_augmentation() {
     let (_dir, repo, _child, spec_id) = create_nested_spec_fixture();
-    let mut root_store = SpecStore::init(&repo.join(".spec")).unwrap();
+    let mut root_store = SpecStore::init(&spec_store_root(&repo)).unwrap();
 
     let reindex = register_descendant_scan_roots(&root_store, &repo).unwrap();
     assert!(reindex);
@@ -778,7 +787,7 @@ fn dispatch_store_index_writes_catalog_with_hierarchy_then_check_detects_drift()
     use spec_api::SpecManifest;
 
     let (_dir, repo) = create_cli_spec_fixture();
-    let mut store = SpecStore::open(&repo.join(".spec")).unwrap();
+    let mut store = SpecStore::open(&spec_store_root(&repo)).unwrap();
 
     let parent = SpecManifest::new("root", "Root Spec", "comp-a");
     let parent_id = store.create(&parent, "Root body.", None).unwrap();
@@ -799,10 +808,10 @@ fn dispatch_store_index_writes_catalog_with_hierarchy_then_check_detects_drift()
     assert_eq!(payload["specs"], 2);
     assert_eq!(payload["roots"], 1);
 
-    let readme = repo.join(".spec/README.md");
-    let sidecar = repo.join(".spec/index.toon");
+    let readme = spec_store_root(&repo).join("README.md");
+    let sidecar = spec_store_root(&repo).join("index.toon");
     let agent_hook = repo.join(".agents/spec-catalog.md");
-    let tree_root = repo.join(".spec/tree");
+    let tree_root = spec_store_root(&repo).join("tree");
     assert!(readme.is_file());
     assert!(sidecar.is_file());
     assert!(agent_hook.is_file());

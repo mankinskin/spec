@@ -56,11 +56,11 @@ fn hierarchy_relations_are_populated() {
     child.set_parent(&parent_id);
 
     let sources = vec![
-        source(&parent, ".spec/specs/root/spec.toml", "Root body."),
-        source(&child, ".spec/specs/child/spec.toml", "Child body."),
+        source(&parent, ".workflow-tools/spec/specs/root/spec.toml", "Root body."),
+        source(&child, ".workflow-tools/spec/specs/child/spec.toml", "Child body."),
     ];
 
-    let artifacts = generate_spec_catalog(&sources, ".spec");
+    let artifacts = generate_spec_catalog(&sources, ".workflow-tools/spec");
     let by_id: std::collections::HashMap<_, _> = artifacts
         .sidecar
         .entries
@@ -94,11 +94,11 @@ fn catalog_has_provenance_grouping_and_hierarchy_bullets() {
     child.set_parent(&parent_id);
 
     let sources = vec![
-        source(&parent, ".spec/specs/root/spec.toml", "Root body."),
-        source(&child, ".spec/specs/child/spec.toml", "Child body."),
+        source(&parent, ".workflow-tools/spec/specs/root/spec.toml", "Root body."),
+        source(&child, ".workflow-tools/spec/specs/child/spec.toml", "Child body."),
     ];
 
-    let artifacts = generate_spec_catalog(&sources, ".spec");
+    let artifacts = generate_spec_catalog(&sources, ".workflow-tools/spec");
     let md = &artifacts.readme_markdown;
     assert!(md.starts_with(SPEC_INDEX_FILE_COMMENT));
     assert!(md.contains("## comp-a"));
@@ -123,10 +123,14 @@ fn catalog_has_provenance_grouping_and_hierarchy_bullets() {
 #[test]
 fn regeneration_is_byte_stable() {
     let parent = spec("root", "Root", "comp-a");
-    let sources = vec![source(&parent, ".spec/specs/root/spec.toml", "Body.")];
+    let sources = vec![source(
+        &parent,
+        ".workflow-tools/spec/specs/root/spec.toml",
+        "Body.",
+    )];
 
-    let a = generate_spec_catalog(&sources, ".spec");
-    let b = generate_spec_catalog(&sources, ".spec");
+    let a = generate_spec_catalog(&sources, ".workflow-tools/spec");
+    let b = generate_spec_catalog(&sources, ".workflow-tools/spec");
     assert_eq!(a.readme_markdown, b.readme_markdown);
     assert_eq!(
         a.sidecar.encode_toon().unwrap(),

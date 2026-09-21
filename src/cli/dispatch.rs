@@ -31,8 +31,11 @@ pub(super) fn dispatch(
         workspace_root_override,
     )?;
 
-    let index_root =
-        resolve_index_root(index_root_override, workspace_root_override)?;
+    let index_root = resolve_index_root_for_command(
+        &command,
+        index_root_override,
+        workspace_root_override,
+    )?;
     let default_workspace_root =
         resolve_workspace_root(&index_root, workspace_root_override);
 
@@ -171,6 +174,28 @@ fn resolve_index_root(
         env_root.as_deref(),
         cwd.as_deref(),
     )
+}
+
+fn resolve_index_root_for_command(
+    command: &SpecCommandCli,
+    override_path: Option<&Path>,
+    workspace_root_override: Option<&Path>,
+) -> Result<PathBuf, memory_kernel::workspace::ConsumerWorkspaceError> {
+    if override_path.is_none()
+        && matches!(command, SpecCommandCli::Init)
+            || override_path.is_none() && command_mutates(command)
+    {
+        if let Some(workspace_root) = workspace_root_override {
+            return Ok(
+                memory_kernel::workspace::resolve_store_root_for_initialization_from(
+                    workspace_root,
+                    ".spec",
+                ),
+            );
+        }
+    }
+
+    resolve_index_root(override_path, workspace_root_override)
 }
 
 fn resolve_index_root_from(
