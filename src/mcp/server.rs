@@ -22,6 +22,7 @@ use spec_api::{
     error::SpecError,
 };
 use std::{
+    borrow::Cow,
     path::{
         Path,
         PathBuf,
@@ -34,6 +35,16 @@ mod sections;
 mod types;
 pub use self::types::*;
 // ── Server ───────────────────────────────────────────────────────────────────
+struct WorkspaceResolution {
+    requested_workspace: String,
+    resolved_workspace_root: PathBuf,
+    active_index_root: PathBuf,
+    ancestor_lookup_used: bool,
+    candidate_path_chain: Vec<String>,
+    selection_reason: String,
+    resolution_diagnostics: Vec<String>,
+}
+
 #[derive(Clone)]
 pub struct SpecServer {
     index_root: PathBuf,
@@ -44,6 +55,109 @@ pub struct SpecServer {
     store_lock: Arc<Mutex<()>>,
 }
 impl SpecServer {
+    fn display_path(path: &Path) -> String {
+        path.to_string_lossy().replace('\\', "/")
+    }
+
+    fn workspace_context(
+        resolution: &WorkspaceResolution,
+        store_existed_before_call: bool,
+        store_initialized: Option<bool>,
+    ) -> Value {
+        json!({
+            "requested_workspace": resolution.requested_workspace,
+            "resolved_workspace_root": Self::display_path(&resolution.resolved_workspace_root),
+            "active_index_root": Self::display_path(&resolution.active_index_root),
+            "store_existed_before_call": store_existed_before_call,
+            "store_initialized": store_initialized,
+            "ancestor_lookup_used": resolution.ancestor_lookup_used,
+            "candidate_path_chain": resolution.candidate_path_chain,
+            "selection_reason": resolution.selection_reason,
+            "resolution_diagnostics": resolution.resolution_diagnostics,
+        })
+    }
+
+    fn contextualize_error(
+        mut error: McpError,
+        resolution: &WorkspaceResolution,
+        store_existed_before_call: bool,
+        store_initialized: Option<bool>,
+    ) -> McpError {
+        let mut context = Self::workspace_context(
+            resolution,
+            store_existed_before_call,
+            store_initialized,
+        );
+        if let Some(data) = error.data.take() {
+            if let Some(object) = context.as_object_mut() {
+                object.insert("cause_data".to_string(), data);
+            }
+        }
+        error.message = Cow::Owned(format!(
+            "{} (requested workspace '{}', resolved store '{}')",
+            error.message,
+            resolution.requested_workspace,
+            Self::display_path(&resolution.active_index_root),
+        ));
+        error.data = Some(context);
+        error
+    }
+
+    fn add_resolution_scope(
+        result: CallToolResult,
+        resolution: &WorkspaceResolution,
+        store_existed_before_call: bool,
+        store_initialized: bool,
+    ) -> Result<CallToolResult, McpError> {
+        let text = result.content.iter().find_map(|content| {
+            if let RawContent::Text(text) = &content.raw {
+                Some(text.text.clone())
+            } else {
+                None
+            }
+        });
+        let Some(text) = text else {
+            return Ok(result);
+        };
+        let mut value: Value = serde_json::from_str(&text).map_err(|error| {
+            Self::contextualize_error(
+                McpError::internal_error(
+                    format!("spec MCP response was not valid JSON: {error}"),
+                    None,
+                ),
+                resolution,
+                store_existed_before_call,
+                Some(store_initialized),
+            )
+        })?;
+        if let Value::Object(object) = &mut value {
+            let scope = object
+                .entry("scope")
+                .or_insert_with(|| json!({}));
+            if let Value::Object(scope) = scope {
+                scope.extend(
+                    Self::workspace_context(
+                        resolution,
+                        store_existed_before_call,
+                        Some(store_initialized),
+                    )
+                    .as_object()
+                    .expect("workspace context object")
+                    .clone(),
+                );
+                scope.insert(
+                    "workspace".to_string(),
+                    json!(resolution.requested_workspace),
+                );
+                scope.insert(
+                    "workspace_root".to_string(),
+                    json!(Self::display_path(&resolution.resolved_workspace_root)),
+                );
+            }
+        }
+        Self::json_result(&value)
+    }
+
     pub fn new(index_root: PathBuf) -> Self {
         Self {
             index_root,
@@ -114,28 +228,93 @@ impl SpecServer {
             || path.join("entities.db").is_file()
             || path.join("search_index").is_dir()
     }
+    fn is_explicit_store_path(path: &Path) -> bool {
+        let name = path.file_name().and_then(|name| name.to_str());
+        name == Some(".spec")
+            || (name == Some("spec")
+                && path
+                    .parent()
+                    .and_then(Path::file_name)
+                    .and_then(|name| name.to_str())
+                    == Some(".workflow-tools"))
+            || Self::is_spec_store_root(path)
+    }
     fn resolve_workspace_root(
         &self,
         workspace: Option<&str>,
-    ) -> Result<PathBuf, McpError> {
-        let workspace = workspace.unwrap_or("default").trim();
-        if workspace.is_empty() || workspace == "default" {
-            return Ok(self.index_root.clone());
+    ) -> Result<WorkspaceResolution, McpError> {
+        let requested_workspace = workspace
+            .map(str::trim)
+            .filter(|workspace| !workspace.is_empty())
+            .unwrap_or("default")
+            .to_string();
+        if requested_workspace == "default" {
+            let active_index_root = self.index_root.clone();
+            return Ok(WorkspaceResolution {
+                requested_workspace,
+                resolved_workspace_root:
+                    memory_kernel::workspace::resolve_workspace_root_from_store_root(
+                        &active_index_root,
+                        ".spec",
+                    ),
+                active_index_root,
+                ancestor_lookup_used: false,
+                candidate_path_chain: Vec::new(),
+                selection_reason: "server_default_index_root".to_string(),
+                resolution_diagnostics: Vec::new(),
+            });
         }
-        let resolved = memory_kernel::workspace::resolve_store_root_from(
-            Path::new(workspace),
+        let requested_path = Path::new(&requested_workspace);
+        let store_resolution =
+            memory_kernel::workspace::resolve_explicit_store_root_from(
+                requested_path,
+                ".spec",
+            );
+        if requested_path.is_dir() || Self::is_explicit_store_path(requested_path) {
+            let active_index_root = store_resolution.store_root;
+            let resolved_workspace_root =
+                memory_kernel::workspace::resolve_workspace_root_from_store_root(
+                    &active_index_root,
+                    ".spec",
+                );
+            let selection_reason = if Self::is_explicit_store_path(requested_path) {
+                "explicit_store_path"
+            } else {
+                "explicit_workspace_bounded"
+            };
+            let candidate_path_chain = vec![Self::display_path(requested_path)];
+            return Ok(WorkspaceResolution {
+                requested_workspace,
+                resolved_workspace_root,
+                active_index_root,
+                ancestor_lookup_used: false,
+                candidate_path_chain,
+                selection_reason: selection_reason.to_string(),
+                resolution_diagnostics: store_resolution
+                    .diagnostics
+                    .iter()
+                    .map(|diagnostic| format!("{diagnostic:?}"))
+                    .collect(),
+            });
+        }
+        let expected_store = memory_kernel::workspace::canonical_store_root(
+            requested_path,
             ".spec",
         );
-        if resolved.file_name().and_then(|name| name.to_str()) == Some(".spec")
-            || Self::is_spec_store_root(&resolved)
-        {
-            return Ok(resolved);
-        }
         Err(McpError::invalid_params(
             format!(
-                "invalid workspace '{workspace}': expected 'default', a repo root containing .spec, the .spec store itself, a path inside that store, or an existing spec store root"
+                "invalid workspace '{requested_workspace}': expected an existing workspace directory or explicit spec store path; expected store location '{}'",
+                expected_store.display()
             ),
-            None,
+            Some(json!({
+                "requested_workspace": requested_workspace,
+                "expected_store_location": expected_store.to_string_lossy(),
+                "resolved_workspace_root": Value::Null,
+                "active_index_root": Value::Null,
+                "store_existed_before_call": false,
+                "store_initialized": false,
+                "ancestor_lookup_used": false,
+            })),
         ))
     }
     /// Open a mutable SpecStore under the serialization lock, run the closure,
@@ -143,19 +322,60 @@ impl SpecServer {
     ///
     /// Uses `&mut SpecStore` since create/update/delete/scan all mutate the
     /// slug index. The auto-scan ensures slug resolution works on every call.
-    async fn with_store<T>(
+    async fn with_store(
         &self,
         workspace: Option<&str>,
-        f: impl FnOnce(&mut SpecStore, &Path) -> Result<T, McpError>,
-    ) -> Result<T, McpError> {
-        let index_root = self.resolve_workspace_root(workspace)?;
+        f: impl FnOnce(&mut SpecStore, &Path) -> Result<CallToolResult, McpError>,
+    ) -> Result<CallToolResult, McpError> {
+        let resolution = self.resolve_workspace_root(workspace)?;
         let _guard = self.store_lock.lock().await;
-        let mut store =
-            SpecStore::open_or_init(&index_root).map_err(Self::spec_err)?;
-        store.scan(false).map_err(Self::spec_err)?;
-        let result = f(&mut store, &index_root);
+        let index_root = &resolution.active_index_root;
+        let store_existed_before_call = index_root.exists();
+        tracing::info!(
+            target: "spec_mcp::workspace",
+            requested_workspace = %resolution.requested_workspace,
+            resolved_workspace_root = %resolution.resolved_workspace_root.display(),
+            active_index_root = %resolution.active_index_root.display(),
+            store_existed_before_call,
+            ancestor_lookup_used = resolution.ancestor_lookup_used,
+            candidate_path_chain = ?resolution.candidate_path_chain,
+            selection_reason = %resolution.selection_reason,
+            resolution_diagnostics = ?resolution.resolution_diagnostics,
+            "spec_mcp_workspace_resolved"
+        );
+        let (mut store, store_initialized) =
+            SpecStore::open_or_init_with_status(index_root).map_err(|error| {
+                Self::contextualize_error(
+                    Self::spec_err(error),
+                    &resolution,
+                    store_existed_before_call,
+                    None,
+                )
+            })?;
+        store.scan(false).map_err(|error| {
+            Self::contextualize_error(
+                Self::spec_err(error),
+                &resolution,
+                store_existed_before_call,
+                Some(store_initialized),
+            )
+        })?;
+        let result = f(&mut store, index_root);
         drop(store);
-        result
+        match result {
+            Ok(result) => Self::add_resolution_scope(
+                result,
+                &resolution,
+                store_existed_before_call,
+                store_initialized,
+            ),
+            Err(error) => Err(Self::contextualize_error(
+                error,
+                &resolution,
+                store_existed_before_call,
+                Some(store_initialized),
+            )),
+        }
     }
 }
 // ── Tool implementations ──────────────────────────────────────────────────────

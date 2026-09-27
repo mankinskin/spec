@@ -10,6 +10,7 @@ use std::{
 };
 
 use rmcp::handler::server::wrapper::Parameters;
+use spec_api::{SpecManifest, SpecStore};
 use spec::mcp::server::*;
 
 #[path = "mcp_smoke/support.rs"]
@@ -33,6 +34,180 @@ fn run_git(
 }
 
 // ── tests ────────────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn explicit_child_workspace_does_not_use_parent_spec_store() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let parent = tmp.path().join("parent-workspace");
+    let child = parent.join("child-workspace");
+    std::fs::create_dir_all(&child).expect("create child workspace");
+    let server = SpecServer::new(parent.clone());
+
+    let parent_store_root =
+        memory_kernel::workspace::canonical_store_root(&parent, ".spec");
+    let mut parent_store =
+        SpecStore::open_or_init(&parent_store_root).expect("open parent store");
+    let first_id = parent_store
+        .create(
+            &SpecManifest::new("parent/only-spec", "Parent Spec", "parent"),
+            "parent body",
+            None,
+        )
+        .expect("seed parent store");
+    let second_id = parent_store
+        .create(
+            &SpecManifest::new("parent/second-spec", "Second Parent Spec", "parent"),
+            "second parent body",
+            None,
+        )
+        .expect("seed second parent spec");
+    drop(parent_store);
+
+    let second_manifest_path = parent_store_root
+        .join("specs")
+        .join(second_id.to_string())
+        .join("spec.toml");
+    let second_manifest =
+        std::fs::read_to_string(&second_manifest_path).expect("read second manifest");
+    let duplicate_manifest = second_manifest.replace(
+        "parent/second-spec",
+        "parent/only-spec",
+    );
+    assert_ne!(second_manifest, duplicate_manifest);
+    std::fs::write(&second_manifest_path, duplicate_manifest)
+        .expect("write duplicate slug manifest");
+
+    let listed = server
+        .spec_list(Parameters(ListSpecsInput {
+            workspace: Some(child.display().to_string()),
+            where_clauses: vec![],
+            limit: None,
+        }))
+        .await
+        .expect("list child specs");
+    let listed = extract_json(listed);
+
+    assert_eq!(listed["count"], 0);
+    assert!(parent_store_root.join("specs").join(first_id.to_string()).is_dir());
+    assert!(child.join(".workflow-tools/spec/entities.db").is_file());
+    assert_eq!(
+        listed["scope"]["requested_workspace"],
+        child.display().to_string()
+    );
+    assert_eq!(
+        listed["scope"]["active_index_root"],
+        memory_kernel::workspace::canonical_store_root(&child, ".spec")
+            .to_string_lossy()
+            .replace('\\', "/")
+    );
+    assert_eq!(listed["scope"]["store_initialized"], true);
+    assert_eq!(listed["scope"]["ancestor_lookup_used"], false);
+
+    let health = server
+        .spec_health(Parameters(HealthInput {
+            workspace: Some(child.display().to_string()),
+            id: None,
+            all: true,
+        }))
+        .await
+        .expect("check child workspace health");
+    let health = extract_json(health);
+
+    assert_eq!(health["status"], "ok");
+    assert_eq!(health["specs_checked"], 0);
+    assert_eq!(health["scope"]["store_initialized"], false);
+}
+
+#[tokio::test]
+async fn spec_health_errors_include_workspace_resolution_context() {
+    let (_tmp, server) = make_sandbox();
+
+    let error = server
+        .spec_health(Parameters(HealthInput {
+            workspace: None,
+            id: None,
+            all: false,
+        }))
+        .await
+        .expect_err("health requires a spec ID or all=true");
+    let context = error.data.expect("workspace resolution context");
+
+    assert_eq!(context["requested_workspace"], "default");
+    assert_eq!(context["store_existed_before_call"], true);
+    assert_eq!(context["store_initialized"], false);
+    assert_eq!(context["ancestor_lookup_used"], false);
+}
+
+#[tokio::test]
+async fn explicit_spec_store_path_remains_an_override() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let workspace = tmp.path().join("workspace");
+    let store_root = memory_kernel::workspace::canonical_store_root(
+        &workspace,
+        ".spec",
+    );
+    let mut store = SpecStore::open_or_init(&store_root).expect("open store");
+    store
+        .create(
+            &SpecManifest::new("explicit/store", "Explicit Store", "test"),
+            "body",
+            None,
+        )
+        .expect("seed explicit store");
+    drop(store);
+
+    let server = SpecServer::new(tmp.path().to_path_buf());
+    let listed = server
+        .spec_list(Parameters(ListSpecsInput {
+            workspace: Some(store_root.display().to_string()),
+            where_clauses: vec![],
+            limit: None,
+        }))
+        .await
+        .expect("list explicit store");
+    let listed = extract_json(listed);
+
+    assert_eq!(listed["count"], 1);
+    assert_eq!(
+        listed["scope"]["selection_reason"],
+        "explicit_store_path"
+    );
+    assert_eq!(
+        listed["scope"]["active_index_root"],
+        store_root.to_string_lossy().replace('\\', "/")
+    );
+}
+
+#[tokio::test]
+async fn invalid_workspace_error_names_expected_store_path() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let requested_workspace = tmp.path().join("missing-workspace");
+    let expected_store = memory_kernel::workspace::canonical_store_root(
+        &requested_workspace,
+        ".spec",
+    );
+    let server = SpecServer::new(tmp.path().to_path_buf());
+
+    let error = server
+        .spec_list(Parameters(ListSpecsInput {
+            workspace: Some(requested_workspace.display().to_string()),
+            where_clauses: vec![],
+            limit: None,
+        }))
+        .await
+        .expect_err("missing workspace must be rejected");
+    let error_data = error.data.expect("workspace diagnostic data");
+
+    assert!(error.message.contains("expected store location"));
+    assert_eq!(
+        error_data["requested_workspace"],
+        requested_workspace.display().to_string()
+    );
+    assert_eq!(
+        error_data["expected_store_location"],
+        expected_store.to_string_lossy().to_string()
+    );
+}
 
 /// Full CRUD lifecycle: create → get → get(full) → update → list → delete.
 #[tokio::test]
@@ -521,8 +696,7 @@ async fn spec_search_tool() {
     // indexing timing, but the tool should succeed.
 }
 
-/// Workspace validation: verify that invalid workspace selectors produce the
-/// canonical error shape.
+/// Workspace validation: omitted aliases produce the canonical error shape.
 #[tokio::test]
 async fn spec_workspace_validation_error() {
     let (_tmp, server) = make_sandbox();
@@ -577,28 +751,4 @@ async fn spec_workspace_validation_error() {
         "error should mention 'invalid workspace selector': {err_msg}"
     );
 
-    // Test '.' rejection
-    let result = server
-        .spec_create(Parameters(CreateSpecInput {
-            workspace: ".".to_string(),
-            title: "Test".to_string(),
-            slug: "test/spec".to_string(),
-            component: "test".to_string(),
-            parent: None,
-            scope: None,
-            body: None,
-            fields: BTreeMap::new(),
-        }))
-        .await;
-
-    let err = result.expect_err("should fail with '.'");
-    let err_msg = err.to_string();
-    assert!(
-        err_msg.contains("invalid workspace selector"),
-        "error should mention 'invalid workspace selector': {err_msg}"
-    );
-    assert!(
-        err_msg.contains("'.'"),
-        "error should list '.' as rejected: {err_msg}"
-    );
 }

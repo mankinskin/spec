@@ -181,6 +181,13 @@ impl SpecStore {
     /// Open an existing spec store, or initialize and force-scan it when the
     /// local derived index artifacts do not exist yet.
     pub fn open_or_init(index_root: &Path) -> Result<Self, SpecError> {
+        Self::open_or_init_with_status(index_root).map(|(store, _)| store)
+    }
+
+    /// Open or initialize a spec store and report whether this call initialized it.
+    pub fn open_or_init_with_status(
+        index_root: &Path,
+    ) -> Result<(Self, bool), SpecError> {
         let span = tracing::info_span!(
             target: SPEC_STORE_TRACE_TARGET,
             "spec_store_open_or_init",
@@ -196,13 +203,14 @@ impl SpecStore {
                 Ok(store)
             },
         )?;
-        span.record("initialized_store", opened.was_initialized());
+        let was_initialized = opened.was_initialized();
+        span.record("initialized_store", was_initialized);
         tracing::info!(
             target: SPEC_STORE_TRACE_TARGET,
-            initialized_store = opened.was_initialized(),
+            initialized_store = was_initialized,
             "spec_store_open_or_init_complete"
         );
-        Ok(opened.into_inner())
+        Ok((opened.into_inner(), was_initialized))
     }
 
     fn open_internal(index_root: &Path) -> Result<Self, SpecError> {

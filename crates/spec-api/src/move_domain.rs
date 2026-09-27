@@ -152,6 +152,15 @@ impl MoveDomain for SpecMoveDomain<'_> {
         }
     }
 
+    fn can_initialize_target_store(&self) -> bool {
+        true
+    }
+
+    fn initialize_target_store(&self, target_store_root: &Path) -> MoveResult<()> {
+        SpecStore::init(target_store_root).map_err(to_move_error)?;
+        Ok(())
+    }
+
     fn entity_indexed_in(&self, store_root: &Path, entity_id: &Uuid) -> MoveResult<bool> {
         let store = SpecStore::open(store_root).map_err(to_move_error)?;
         let entity_root = spec_entity_root(store_root);
@@ -320,6 +329,48 @@ mod tests {
         let dst = SpecStore::open(&target_workspace).unwrap();
         assert!(src.entity_store().get_indexed(&spec_id).unwrap().is_none());
         assert!(dst.entity_store().get_indexed(&spec_id).unwrap().is_some());
+    }
+
+    #[test]
+    fn spec_move_initializes_missing_target_store_after_preflight() {
+        let temp = tempdir().unwrap();
+        let repo = temp.path().join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        run_git(&repo, &["init"]);
+
+        let source_workspace = repo.join("source");
+        let target_workspace = repo.join("target");
+        std::fs::create_dir_all(&source_workspace).unwrap();
+        std::fs::create_dir_all(&target_workspace).unwrap();
+
+        let mut source_store = SpecStore::init(&source_workspace).unwrap();
+        let spec = crate::manifest::SpecManifest::new("sample/spec", "Sample spec", "spec-api");
+        let spec_id: Uuid = source_store.create(&spec, "body", None).unwrap();
+        source_store.scan(true).unwrap();
+
+        let mut plan = source_store
+            .plan_move_preflight(&spec_id, &target_workspace)
+            .unwrap();
+        assert!(!plan
+            .blockers
+            .iter()
+            .any(|blocker| matches!(blocker, MoveBlocker::MissingTargetStore { .. })));
+        plan.blockers.retain(|blocker| {
+            !matches!(
+                blocker,
+                MoveBlocker::PathReferenceScanUnavailable { .. }
+                    | MoveBlocker::DirtyTrackedFiles { .. }
+            )
+        });
+
+        source_store.execute_move_with_journal(&plan).unwrap();
+
+        let destination_store = SpecStore::open(&target_workspace).unwrap();
+        assert!(destination_store
+            .entity_store()
+            .get_indexed(&spec_id)
+            .unwrap()
+            .is_some());
     }
 
     /// Spec hierarchy is slug-based and code refs are repo-relative, so a move
@@ -541,7 +592,7 @@ mod tests {
     }
 
     #[test]
-    fn plan_move_set_reports_missing_target_store_blocker() {
+    fn plan_move_set_allows_missing_target_store() {
         let temp = tempdir().unwrap();
         let repo = temp.path().join("repo");
         std::fs::create_dir_all(&repo).unwrap();
@@ -559,15 +610,32 @@ mod tests {
         let spec_id = source_store.create(&spec, "body", None).unwrap();
         source_store.scan(true).unwrap();
 
-        let plan = source_store
+        let mut plan = source_store
             .plan_move_set(&[spec_id], &target_workspace)
             .unwrap();
 
-        assert!(!plan.supported());
-        assert!(plan.entity_plans[0]
+        assert!(!plan.entity_plans[0]
             .blockers
             .iter()
             .any(|blocker| matches!(blocker, MoveBlocker::MissingTargetStore { .. })));
+
+        for entity_plan in &mut plan.entity_plans {
+            entity_plan.blockers.retain(|blocker| {
+                !matches!(
+                    blocker,
+                    MoveBlocker::PathReferenceScanUnavailable { .. }
+                        | MoveBlocker::DirtyTrackedFiles { .. }
+                )
+            });
+        }
+        source_store.execute_move_set(&plan).unwrap();
+
+        let destination_store = SpecStore::open(&target_workspace).unwrap();
+        assert!(destination_store
+            .entity_store()
+            .get_indexed(&spec_id)
+            .unwrap()
+            .is_some());
     }
 
     #[test]
