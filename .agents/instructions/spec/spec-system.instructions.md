@@ -40,7 +40,11 @@ This keeps spec availability legible to agents, avoids context bloat, and ensure
 
 ### Discovery Before Creating
 
-Always search for an existing spec before creating a new one. Duplicate specs weaken the repository contract.
+[entity-discovery.instructions.md](../../../../.agents/instructions/workflow/entity-discovery.instructions.md)
+owns this rule for every store, including which phases it binds, how to record
+coverage, and the three permitted reuse forms. Do not restate it here.
+
+The spec-specific judgement it leaves open — which reuse form fits a spec:
 
 Prefer updating a matching spec when:
 - the behavior belongs to the same component and scope
