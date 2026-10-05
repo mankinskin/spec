@@ -28,16 +28,6 @@ Before writing or editing a spec:
 
 Prefer `spec-mcp` and `ticket-mcp` tools when available. Fall back to `./target/debug/spec.exe` and `./target/debug/ticket.exe` when needed.
 
-### Rule-Governed Introduction by Readiness
-
-Every spec must be introduced in-session by a governing PolicyRule, conditioned on the spec's computed readiness status:
-
-- **implemented** — present the spec as a live, fully dependable contract dependents can immediately rely on.
-- **partial-with-gaps** — present the spec but list the explicit unimplemented positions so agents do not assume gaps are complete.
-- **coming-soon / not-implemented** — present a "coming soon" note so agents know the spec is defined but unimplemented.
-
-This keeps spec availability legible to agents, avoids context bloat, and ensures every active spec has an active governing rule.
-
 ### Discovery Before Creating
 
 [entity-discovery.instructions.md](../../../../.agents/instructions/workflow/entity-discovery.instructions.md)
@@ -68,7 +58,7 @@ Create the root first, then create each child with:
 spec create --workspace <repo-root> --title "<child-title>" --slug <child-slug> --component <component> --parent <root-id-or-slug>
 ```
 
-Use the [spec-editor hierarchy](../../../../../.workflow-tools/spec/specs/788e91e4-32d7-4ff5-bf68-485235f8211f/body.md) as the imitable precedent.
+Use the [spec-editor hierarchy](../../../.workflow-tools/spec/specs/788e91e4-32d7-4ff5-bf68-485235f8211f/body.md) as the imitable precedent.
 
 ### Code-First Structure and Relationship Traceability
 
@@ -109,7 +99,7 @@ child's internal criteria or provider-owned criteria.
 
 Every reference to another spec, ticket, doc, or code file MUST be a clickable markdown link following the [Clickable Reference Policy](../../../../AGENTS.md#clickable-reference-policy) in `AGENTS.md`.
 
-Directed component edges are the durable contract between components and MUST be authored to mirror one-to-one onto the typed edge model: consumer -> provider -> provider criteria. Until the store persists typed edges and `spec health` validates TOML-to-body link parity, record edges in the parent `flowchart TD` map and each child's `## Reading Order` provider links; this parity is review-enforced today and will become health-enforced later by the [Component-Oriented Specification System](../../../../../.workflow-tools/spec/specs/f1b8f01a-c7da-4a71-97c5-39519a7d7f38/body.md).
+Directed component edges are the durable contract between components and MUST be authored to mirror one-to-one onto the typed edge model: consumer -> provider -> provider criteria. Until the store persists typed edges and `spec health` validates TOML-to-body link parity, record edges in the parent `flowchart TD` map and each child's `## Reading Order` provider links; this parity is review-enforced today and will become health-enforced later by the [Component-Oriented Specification System](../../../.workflow-tools/spec/specs/f1b8f01a-c7da-4a71-97c5-39519a7d7f38/body.md).
 
 Omit a mandated section that would only hold a placeholder. A `## Target Code
 Location` or `## Examples` section that names no real path, type, or behavior
@@ -183,14 +173,12 @@ flowchart TD
 
 ### Structure the Spec (aligned-structure:v2)
 
-Each spec must act as a dependable, verifiable contract. Every spec must start with the `<!-- aligned-structure:v2 -->` template marker and include the following five required content items within the applicable code-first template:
+Each spec must act as a dependable, verifiable contract. Every spec must start with the `<!-- aligned-structure:v2 -->` template marker and include the following four required content items within the applicable code-first template:
 
 1. **Motivation ("why")** — The user requirement or behavior need this spec satisfies, with optional links to feedback explaining its origin.
 2. **Dependent expectation** — An explicit, clear contract clause: "If this spec is implemented, dependents can rely on behavior X."
 3. **Guards** — Declared test-api `ValidationSpec` ids that gate the spec. The spec's `verified` state is COMPUTED from guard execution outcomes, never hand-set.
 4. **Positions** — Current implementation/readiness status per referenced code symbol/path: `implemented`, `partial`, `not-implemented`, or `deprecated` with an explicit `code_ref`.
-5. **Governing-rule requirement** — Link to the PolicyRule(s) that must introduce/explain this spec in-session (governed by the rule-introduces-spec mechanism).
-
 Acceptance criteria and guards must be concrete enough that a reviewer or automated tool can tell exactly what evidence proves the contract is satisfied.
 
 #### Anti-Boilerplate Gate
