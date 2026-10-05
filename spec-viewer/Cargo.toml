@@ -12,6 +12,7 @@ path = "src/main.rs"
 # Spec crates
 spec-api  = { path = "../crates/spec-api" }
 spec-http = { package = "spec", path = "..", features = ["http"] }
+memory-kernel = { git = "https://github.com/mankinskin/memory-kernel", branch = "main" }
 
 # Shared viewer infrastructure
 viewer-api = { git = "https://github.com/mankinskin/viewer-api", branch = "main" }
