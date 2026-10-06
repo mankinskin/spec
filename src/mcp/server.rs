@@ -264,6 +264,15 @@ impl SpecServer {
                 resolution_diagnostics: Vec::new(),
             });
         }
+        let requested_workspace =
+            memory_kernel::workspace::normalize_explicit_workspace_selector(
+                Some(&requested_workspace),
+            )
+            .map_err(|error| {
+                McpError::invalid_params(error.to_string(), None)
+            })?
+            .to_string_lossy()
+            .into_owned();
         let requested_path = Path::new(&requested_workspace);
         let store_resolution =
             memory_kernel::workspace::resolve_explicit_store_root_from(
@@ -376,6 +385,20 @@ impl SpecServer {
                 Some(store_initialized),
             )),
         }
+    }
+
+    async fn with_write_store(
+        &self,
+        workspace: Option<&str>,
+        f: impl FnOnce(&mut SpecStore, &Path) -> Result<CallToolResult, McpError>,
+    ) -> Result<CallToolResult, McpError> {
+        let workspace =
+            memory_kernel::workspace::normalize_explicit_workspace_selector(
+                workspace,
+            )
+            .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
+        let workspace = workspace.to_string_lossy().into_owned();
+        self.with_store(Some(&workspace), f).await
     }
 }
 // ── Tool implementations ──────────────────────────────────────────────────────
@@ -530,7 +553,10 @@ impl SpecServer {
         &self,
         Parameters(input): Parameters<SpecMoveInput>,
     ) -> Result<CallToolResult, McpError> {
-        let to = PathBuf::from(&input.to_workspace_root);
+        let to = memory_kernel::workspace::normalize_explicit_workspace_selector(
+            Some(&input.to_workspace_root),
+        )
+        .map_err(|err| McpError::invalid_params(err.to_string(), None))?;
         self.with_store(input.workspace.as_deref(), move |store, _| {
             if let Some(ids) = &input.ids {
                 let ids = ids
@@ -569,8 +595,11 @@ impl SpecServer {
         &self,
         Parameters(input): Parameters<SpecMoveInput>,
     ) -> Result<CallToolResult, McpError> {
-        let to = PathBuf::from(&input.to_workspace_root);
-        self.with_store(input.workspace.as_deref(), move |store, _| {
+        let to = memory_kernel::workspace::normalize_explicit_workspace_selector(
+            Some(&input.to_workspace_root),
+        )
+        .map_err(|err| McpError::invalid_params(err.to_string(), None))?;
+        self.with_write_store(input.workspace.as_deref(), move |store, _| {
             if let Some(ids) = &input.ids {
                 let ids = ids
                     .iter()
@@ -621,7 +650,7 @@ impl SpecServer {
         let journal = input.id.parse::<uuid::Uuid>().map_err(|e| {
             McpError::invalid_params(format!("invalid journal id: {e}"), None)
         })?;
-        self.with_store(input.workspace.as_deref(), move |store, _| {
+        self.with_write_store(input.workspace.as_deref(), move |store, _| {
             let outcome = store.resume_move_with_journal(journal).map_err(Self::spec_err)?;
             Self::json_result(&json!({"status":"ok","mode":"resume","journal_id":outcome.journal.id,"phase":outcome.journal.phase}))
         })
@@ -638,7 +667,7 @@ impl SpecServer {
         let journal = input.id.parse::<uuid::Uuid>().map_err(|e| {
             McpError::invalid_params(format!("invalid journal id: {e}"), None)
         })?;
-        self.with_store(input.workspace.as_deref(), move |store, _| {
+        self.with_write_store(input.workspace.as_deref(), move |store, _| {
             let outcome = store.rollback_move_with_journal(journal).map_err(Self::spec_err)?;
             Self::json_result(&json!({"status":"ok","mode":"rollback","journal_id":outcome.journal.id,"phase":outcome.journal.phase}))
         })

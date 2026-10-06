@@ -115,6 +115,35 @@ async fn create_spec_duplicate_slug_returns_409() {
     let payload: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(payload["code"], "spec.duplicate_slug");
 }
+
+#[tokio::test]
+async fn move_spec_rejects_ambient_workspace_aliases() {
+    for selector in ["", "  ", "default", ".."] {
+        let dir = tempfile::tempdir().unwrap();
+        let id = seed_spec(dir.path(), "move-source", "Move Source");
+        let app = make_app(dir.path());
+        let destination = dir.path().join("unused-target");
+
+        let body = serde_json::json!({
+            "to_workspace_root": selector,
+        })
+        .to_string();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method(Method::POST)
+                    .uri(format!("/api/specs/{id}/move"))
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(body))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert!(!destination.exists());
+    }
+}
 // ── GET /api/specs — list ─────────────────────────────────────────────────────
 
 #[tokio::test]

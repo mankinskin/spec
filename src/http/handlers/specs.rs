@@ -334,8 +334,20 @@ pub async fn move_spec(
     Path(id): Path<String>,
     Json(req): Json<MoveSpecRequest>,
 ) -> Response {
+    let to = match memory_kernel::workspace::normalize_explicit_workspace_selector(
+        Some(&req.to_workspace_root),
+    ) {
+        Ok(path) => path,
+        Err(error) => {
+            return viewer_api::error::ApiError::new(
+                "spec.invalid_workspace_selector",
+                &error.to_string(),
+                &rid.0,
+            )
+            .into_response_with_status(StatusCode::BAD_REQUEST);
+        }
+    };
     let store = state.store.lock().await;
-    let to = std::path::PathBuf::from(&req.to_workspace_root);
     if let Some(ids) = &req.ids {
         let ids = match ids
             .iter()

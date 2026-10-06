@@ -44,11 +44,15 @@ pub(crate) fn cmd_move(args: MoveArgs, store: &SpecStore) -> Result<Value, CliRu
     let id = args.id.as_deref().ok_or_else(|| {
         CliRunError::BadRequest("move requires <id> unless --resume/--rollback is used".to_string())
     })?;
-    let to_workspace_root = args.to_workspace_root.as_deref().ok_or_else(|| {
+    let selector = args.to_workspace_root.as_deref().ok_or_else(|| {
         CliRunError::BadRequest(
             "move requires --to-workspace-root in plan/execute mode".to_string(),
         )
     })?;
+    let to_workspace_root = memory_kernel::workspace::normalize_explicit_workspace_selector(
+        Some(&selector.to_string_lossy()),
+    )
+    .map_err(|error| CliRunError::BadRequest(error.to_string()))?;
 
     let requested_ids = id.split(',').map(str::trim).filter(|id| !id.is_empty());
     let requested_ids = requested_ids
@@ -61,7 +65,7 @@ pub(crate) fn cmd_move(args: MoveArgs, store: &SpecStore) -> Result<Value, CliRu
     }
 
     if requested_ids.len() > 1 {
-        let report = store.plan_move_set(&requested_ids, to_workspace_root)?;
+        let report = store.plan_move_set(&requested_ids, &to_workspace_root)?;
         if args.dry_run || !report.supported() {
             return Ok(json!({
                 "command": "move",
@@ -88,7 +92,7 @@ pub(crate) fn cmd_move(args: MoveArgs, store: &SpecStore) -> Result<Value, CliRu
     }
 
     let spec_id = requested_ids[0];
-    let report = store.plan_move_preflight(&spec_id, to_workspace_root)?;
+    let report = store.plan_move_preflight(&spec_id, &to_workspace_root)?;
 
     if args.dry_run || !report.supported() {
         return Ok(json!({

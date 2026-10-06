@@ -33,11 +33,12 @@ impl SpecServer {
         input: CreateSpecInput,
     ) -> Result<CallToolResult, McpError> {
         let workspace =
-            memory_kernel::workspace::validate_explicit_workspace_selector(
+            memory_kernel::workspace::normalize_explicit_workspace_selector(
                 Some(&input.workspace),
             )
             .map_err(|err| McpError::invalid_params(err.to_string(), None))?
-            .to_string();
+            .to_string_lossy()
+            .into_owned();
         self.with_store(Some(&workspace), |store, index_root| {
             let mut manifest =
                 SpecManifest::new(&input.slug, &input.title, &input.component);
@@ -124,7 +125,7 @@ impl SpecServer {
         input: UpdateSpecInput,
     ) -> Result<CallToolResult, McpError> {
         let workspace = input.workspace.clone();
-        self.with_store(workspace.as_deref(), |store, index_root| {
+        self.with_write_store(workspace.as_deref(), |store, index_root| {
             let previous = store.get(&input.id).map_err(Self::spec_err)?;
             let mut patch = input.field_map.clone().unwrap_or_default();
             for raw in input.fields.clone().unwrap_or_default() {
@@ -188,7 +189,7 @@ impl SpecServer {
         input: SpecRefInput,
     ) -> Result<CallToolResult, McpError> {
         let workspace = input.workspace.clone();
-        self.with_store(workspace.as_deref(), |store, index_root| {
+        self.with_write_store(workspace.as_deref(), |store, index_root| {
             let id = store.resolve_id(&input.id).map_err(Self::spec_err)?;
             store.delete(&input.id).map_err(Self::spec_err)?;
             Self::json_result_with_scope(
@@ -509,7 +510,7 @@ mod tests {
         parse_tool_payload(
             server
                 .spec_update_tool(UpdateSpecInput {
-                    workspace: None,
+                    workspace: Some(index_root.display().to_string()),
                     id: spec_id.clone(),
                     fields: None,
                     to_state: None,

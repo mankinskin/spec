@@ -25,6 +25,25 @@ pub(super) fn dispatch(
     workspace_root_override: Option<&Path>,
     _as_json: bool,
 ) -> Result<Value, CliRunError> {
+    let normalized_workspace_root = if matches!(command, SpecCommandCli::Init)
+        || command_mutates(&command)
+    {
+        workspace_root_override
+            .map(|path| {
+                let selector = path.to_string_lossy();
+                memory_kernel::workspace::normalize_explicit_workspace_selector(
+                    Some(&selector),
+                )
+                .map_err(|error| CliRunError::BadRequest(error.to_string()))
+            })
+            .transpose()?
+    } else {
+        None
+    };
+    let workspace_root_override = normalized_workspace_root
+        .as_deref()
+        .or(workspace_root_override);
+
     require_explicit_workspace_for_create(
         &command,
         index_root_override,
@@ -75,13 +94,18 @@ fn require_explicit_workspace_for_create(
 ) -> Result<(), CliRunError> {
     if matches!(
         command,
-        SpecCommandCli::Create(_) | SpecCommandCli::Bootstrap(_)
+        SpecCommandCli::Init
+            | SpecCommandCli::Create(_)
+            | SpecCommandCli::Bootstrap(_)
     ) && index_root_override.is_none()
         && workspace_root_override.is_none()
     {
-        return Err(CliRunError::BadRequest(
-            "entity creation requires explicit --workspace <path> or --index-root <path>".to_string(),
-        ));
+        let message = if matches!(command, SpecCommandCli::Init) {
+            "store initialization requires explicit --workspace <path> or --index-root <path>"
+        } else {
+            "entity creation requires explicit --workspace <path> or --index-root <path>"
+        };
+        return Err(CliRunError::BadRequest(message.to_string()));
     }
     Ok(())
 }

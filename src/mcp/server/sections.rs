@@ -22,7 +22,7 @@ impl SpecServer {
         input: SectionAddInput,
     ) -> Result<CallToolResult, McpError> {
         let workspace = input.workspace.clone();
-        self.with_store(workspace.as_deref(), |store, index_root| {
+        self.with_write_store(workspace.as_deref(), |store, index_root| {
             store
                 .add_section(&input.id, &input.name, &input.content)
                 .map_err(Self::spec_err)?;
@@ -106,7 +106,7 @@ impl SpecServer {
         input: SectionRefInput,
     ) -> Result<CallToolResult, McpError> {
         let workspace = input.workspace.clone();
-        self.with_store(workspace.as_deref(), |store, index_root| {
+        self.with_write_store(workspace.as_deref(), |store, index_root| {
             store
                 .delete_section(&input.id, &input.name)
                 .map_err(Self::spec_err)?;
@@ -128,7 +128,7 @@ impl SpecServer {
         input: ScanInput,
     ) -> Result<CallToolResult, McpError> {
         let workspace = input.workspace.clone();
-        self.with_store(workspace.as_deref(), |store, index_root| {
+        self.with_write_store(workspace.as_deref(), |store, index_root| {
             let report = store.scan(input.force).map_err(Self::spec_err)?;
             Self::json_result_with_scope(
                 json!({
@@ -150,7 +150,7 @@ impl SpecServer {
         input: AddRootInput,
     ) -> Result<CallToolResult, McpError> {
         let workspace = input.workspace.clone();
-        self.with_store(workspace.as_deref(), |store, index_root| {
+        self.with_write_store(workspace.as_deref(), |store, index_root| {
             let path = PathBuf::from(&input.path);
             let label = input.label.unwrap_or_else(|| {
                 path.file_name()

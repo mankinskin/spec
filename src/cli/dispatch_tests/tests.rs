@@ -130,6 +130,40 @@ fn mutating_command_with_workspace_uses_canonical_store() {
 }
 
 #[test]
+fn create_rejects_ambient_workspace_aliases_before_store_open() {
+    for selector in ["", "  ", "default", ".."] {
+        let workspace = PathBuf::from(selector);
+        let result = dispatch(
+            SpecCommandCli::Create(crate::cli::CreateArgs {
+                title: "Selector validation".to_string(),
+                slug: "selector/validation".to_string(),
+                component: "selector".to_string(),
+                parent: None,
+                scope: None,
+                body_file: None,
+                fields_file: None,
+            }),
+            None,
+            Some(&workspace),
+            true,
+        );
+
+        let error = result.expect_err("ambient selector must fail");
+        assert!(error.to_string().contains("invalid workspace selector"));
+    }
+}
+
+#[test]
+fn init_requires_explicit_workspace_or_index_root() {
+    let error = dispatch(SpecCommandCli::Init, None, None, true)
+        .expect_err("init must not select an ambient workspace");
+
+    assert!(error
+        .to_string()
+        .contains("store initialization requires explicit"));
+}
+
+#[test]
 fn resolve_workspace_root_prefers_explicit_workspace_root() {
     let dir = tempdir().unwrap();
     let repo = dir.path().join("repo");
@@ -225,6 +259,36 @@ fn dispatch_move_dry_run_returns_supported_preflight_plan() {
     assert_eq!(payload["status"], "ok");
     assert_eq!(payload["mode"], "plan");
     assert_eq!(payload["plan"]["supported"], true);
+}
+
+#[test]
+fn dispatch_move_rejects_ambient_workspace_aliases() {
+    let (_dir, repo) = create_cli_spec_fixture();
+    let mut store = SpecStore::open(&spec_store_root(&repo)).unwrap();
+    let spec_id = store
+        .create(
+            &spec_api::SpecManifest::new("sample/spec", "Sample spec", "spec-cli"),
+            "body",
+            None,
+        )
+        .unwrap();
+    store.scan(true).unwrap();
+
+    for selector in ["", "  ", "default", ".."] {
+        let result = dispatch(
+            SpecCommandCli::Move(crate::cli::MoveArgs {
+                id: Some(spec_id.to_string()),
+                to_workspace_root: Some(std::path::PathBuf::from(selector)),
+                dry_run: true,
+                resume: None,
+                rollback: None,
+            }),
+            Some(&spec_store_root(&repo)),
+            Some(&repo),
+            true,
+        );
+        assert!(result.is_err(), "selector {selector:?} must be rejected");
+    }
 }
 
 #[test]
