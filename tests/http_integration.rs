@@ -15,7 +15,7 @@ mod sections;
 #[path = "http_integration/support.rs"]
 mod support;
 
-use support::{make_app, seed_spec};
+use support::{make_app, make_app_for_workspace, seed_spec};
 // ── healthz ──────────────────────────────────────────────────────────────────
 
 #[tokio::test]
@@ -71,6 +71,48 @@ async fn create_spec_returns_201_with_id_and_slug() {
     assert!(payload.get("id").is_some());
     assert_eq!(payload["slug"], "my-feature");
     assert!(payload.get("request_id").is_some());
+}
+
+#[tokio::test]
+async fn http_create_in_selected_workspace_persists_to_its_canonical_store() {
+    let dir = tempfile::tempdir().unwrap();
+    let selected = dir.path().join("selected");
+    let sibling = dir.path().join("sibling");
+    std::fs::create_dir_all(&selected).unwrap();
+    std::fs::create_dir_all(&sibling).unwrap();
+    let app = make_app_for_workspace(&selected);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/api/specs")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    serde_json::json!({
+                        "title": "HTTP selected workspace",
+                        "slug": "workspace/http",
+                        "component": "spec-http",
+                        "body": "persisted body",
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let bytes = to_bytes(response.into_body(), 4096).await.unwrap();
+    let id = serde_json::from_slice::<serde_json::Value>(&bytes).unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let store = SpecStore::open_in_workspace(&selected).unwrap();
+    let (manifest, body) = store.get_full(&id).unwrap();
+    assert_eq!(manifest.title(), Some("HTTP selected workspace"));
+    assert_eq!(body, "persisted body");
+    assert!(!sibling.join(".workflow-tools").exists());
 }
 
 #[tokio::test]

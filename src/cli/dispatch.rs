@@ -179,21 +179,20 @@ fn resolve_index_root_for_command(
     command: &SpecCommandCli,
     override_path: Option<&Path>,
     workspace_root_override: Option<&Path>,
-) -> Result<PathBuf, memory_kernel::workspace::ConsumerWorkspaceError> {
+) -> Result<PathBuf, CliRunError> {
     if override_path.is_none() && matches!(command, SpecCommandCli::Init)
         || override_path.is_none() && command_mutates(command)
     {
         if let Some(workspace_root) = workspace_root_override {
-            return Ok(
-                memory_kernel::workspace::resolve_store_root_for_initialization_from(
-                    workspace_root,
-                    ".spec",
-                ),
-            );
+            return Ok(SpecStore::resolve_workspace_store(
+                workspace_root,
+                memory_kernel::domain_store::StoreAccessMode::CreateOrOpen,
+            )?
+            .store_root);
         }
     }
 
-    resolve_index_root(override_path, workspace_root_override)
+    Ok(resolve_index_root(override_path, workspace_root_override)?)
 }
 
 fn resolve_index_root_from(

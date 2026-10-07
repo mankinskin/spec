@@ -241,15 +241,14 @@ impl SpecServer {
         .to_string_lossy()
         .into_owned();
         let requested_path = Path::new(&requested_workspace);
-        let store_resolution =
-            memory_kernel::workspace::resolve_explicit_store_root_from(requested_path, ".spec");
+        let store_resolution = SpecStore::resolve_workspace_store(
+            requested_path,
+            memory_kernel::domain_store::StoreAccessMode::ReadOnly,
+        )
+        .map_err(Self::spec_err)?;
         if requested_path.is_dir() || Self::is_explicit_store_path(requested_path) {
             let active_index_root = store_resolution.store_root;
-            let resolved_workspace_root =
-                memory_kernel::workspace::resolve_workspace_root_from_store_root(
-                    &active_index_root,
-                    ".spec",
-                );
+            let resolved_workspace_root = store_resolution.local_workspace;
             let selection_reason = if Self::is_explicit_store_path(requested_path) {
                 "explicit_store_path"
             } else {

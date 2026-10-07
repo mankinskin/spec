@@ -1,6 +1,7 @@
 pub mod code_ref;
 pub mod default_schema;
 pub mod domain_adoption;
+pub mod domain_store;
 pub mod error;
 pub mod manifest;
 pub mod move_domain;
@@ -14,6 +15,7 @@ pub mod workspace;
 pub use memory_kernel::generated_markdown::GeneratedMarkdownSnippet;
 
 pub use domain_adoption::{SPEC_DOMAIN_ID, SPEC_DOMAIN_SCHEMA_VERSION, spec_domain_manifest};
+pub use domain_store::{SpecCreateInput, SpecDomainStore, SpecUpdatePatch};
 
 pub use code_ref::{CodeRef, SymbolKind};
 pub use default_schema::{spec_schema_registry, specification_schema};

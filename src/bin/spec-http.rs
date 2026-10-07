@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use memory_kernel::runtime::init_transport_tracing;
 use spec::http::{ServeConfig, SpecAppState, start_server};
-use spec_api::SpecStore;
 
 #[tokio::main]
 async fn main() {
@@ -42,12 +41,11 @@ async fn main() {
             memory_kernel::workspace::resolve_store_root_from(&cwd, ".spec")
         });
 
-    let store = SpecStore::open_or_init(&root).unwrap_or_else(|error| {
-        eprintln!("Failed to open spec store at {}: {error}", root.display());
+    let state = SpecAppState::open_or_init_in_workspace(&root).unwrap_or_else(|error| {
+        eprintln!("Failed to open spec store for {}: {error}", root.display());
         std::process::exit(1);
     });
 
-    let state = SpecAppState::new(store);
     let config = ServeConfig { host, port };
 
     if let Err(error) = start_server(config, state).await {

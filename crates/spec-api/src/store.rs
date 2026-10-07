@@ -112,6 +112,15 @@ impl SpecStore {
         Ok(store)
     }
 
+    /// Open an existing Spec store in the explicitly selected workspace.
+    pub fn open_in_workspace(local_workspace: &Path) -> Result<Self, SpecError> {
+        let resolution = Self::resolve_workspace_store(
+            local_workspace,
+            memory_kernel::domain_store::StoreAccessMode::ReadOnly,
+        )?;
+        Self::open(&resolution.store_root)
+    }
+
     /// Initialize a new spec store rooted at `index_root`.
     ///
     /// Creates the workspace directory and all required index files. Idempotent:
@@ -137,10 +146,29 @@ impl SpecStore {
         Ok(store)
     }
 
+    /// Initialize a Spec store in the explicitly selected workspace.
+    pub fn init_in_workspace(local_workspace: &Path) -> Result<Self, SpecError> {
+        let resolution = Self::resolve_workspace_store(
+            local_workspace,
+            memory_kernel::domain_store::StoreAccessMode::CreateOrOpen,
+        )?;
+        Self::init(&resolution.store_root)
+    }
+
     /// Open an existing spec store, or initialize and force-scan it when the
     /// local derived index artifacts do not exist yet.
     pub fn open_or_init(index_root: &Path) -> Result<Self, SpecError> {
         Self::open_or_init_with_status(index_root).map(|(store, _)| store)
+    }
+
+    /// Open or initialize the canonical Spec store belonging to the selected
+    /// workspace, without searching ancestor workspaces.
+    pub fn open_or_init_in_workspace(local_workspace: &Path) -> Result<Self, SpecError> {
+        let resolution = Self::resolve_workspace_store(
+            local_workspace,
+            memory_kernel::domain_store::StoreAccessMode::CreateOrOpen,
+        )?;
+        Self::open_or_init(&resolution.store_root)
     }
 
     /// Open or initialize a spec store and report whether this call initialized it.

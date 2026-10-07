@@ -19,4 +19,11 @@ impl SpecAppState {
             store: Arc::new(Mutex::new(store)),
         }
     }
+
+    /// Open the canonical Spec store owned by `workspace` for an HTTP server.
+    pub fn open_or_init_in_workspace(
+        workspace: &std::path::Path,
+    ) -> Result<Self, spec_api::error::SpecError> {
+        SpecStore::open_or_init_in_workspace(workspace).map(Self::new)
+    }
 }

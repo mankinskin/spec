@@ -34,6 +34,12 @@ pub(super) fn make_app(dir: &std::path::Path) -> axum::Router {
     build_router(state)
 }
 
+pub(super) fn make_app_for_workspace(workspace: &std::path::Path) -> axum::Router {
+    let state =
+        SpecAppState::open_or_init_in_workspace(workspace).expect("open selected workspace");
+    build_router(state)
+}
+
 pub(super) fn seed_spec(dir: &std::path::Path, slug: &str, title: &str) -> String {
     let mut store = open_or_init_store(dir);
     let specs_dir = dir.join("specs");

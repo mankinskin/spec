@@ -32,6 +32,9 @@ pub enum SpecError {
     #[error("storage error: {0}")]
     Storage(#[from] memory_kernel::error::StorageError),
 
+    #[error("domain store error: {0}")]
+    DomainStore(#[from] memory_kernel::domain_store::DomainStoreError),
+
     #[error("schema validation: {0}")]
     Validation(#[from] memory_kernel::error::SchemaValidationError),
 

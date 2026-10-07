@@ -115,6 +115,45 @@ fn mutating_command_with_workspace_uses_canonical_store() {
 }
 
 #[test]
+fn create_in_selected_workspace_persists_to_its_canonical_store() {
+    let dir = tempdir().unwrap();
+    let selected = dir.path().join("selected");
+    let sibling = dir.path().join("sibling");
+    std::fs::create_dir_all(&selected).unwrap();
+    std::fs::create_dir_all(&sibling).unwrap();
+
+    let payload = dispatch(
+        SpecCommandCli::Create(crate::cli::CreateArgs {
+            title: "Selected workspace".to_string(),
+            slug: "workspace/selected".to_string(),
+            component: "spec-cli".to_string(),
+            parent: None,
+            scope: None,
+            body_file: None,
+            fields_file: None,
+        }),
+        None,
+        Some(&selected),
+        true,
+    )
+    .unwrap();
+
+    let id = payload["id"].as_str().expect("created id");
+    let store = SpecStore::open_in_workspace(&selected).unwrap();
+    let (manifest, body) = store.get_full(id).unwrap();
+    assert_eq!(manifest.title(), Some("Selected workspace"));
+    assert_eq!(body, "");
+    assert!(
+        spec_store_root(&selected)
+            .join("specs")
+            .join(id)
+            .join("spec.toml")
+            .is_file()
+    );
+    assert!(!spec_store_root(&sibling).exists());
+}
+
+#[test]
 fn create_rejects_ambient_workspace_aliases_before_store_open() {
     for selector in ["", "  ", "default", ".."] {
         let workspace = PathBuf::from(selector);
