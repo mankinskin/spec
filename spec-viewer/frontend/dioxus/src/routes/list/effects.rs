@@ -1,11 +1,7 @@
 use dioxus::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
-use crate::{
-    api,
-    store::SpecListStore,
-    types::SpecSummary,
-};
+use crate::{api, store::SpecListStore, types::SpecSummary};
 
 pub(crate) fn persist_store(store: SpecListStore) {
     use_effect(move || {
@@ -38,17 +34,15 @@ pub(crate) fn use_spec_list(
         };
 
         spawn_local(async move {
-            match api::list_specs(state.as_deref(), query.as_deref(), None)
-                .await
-            {
+            match api::list_specs(state.as_deref(), query.as_deref(), None).await {
                 Ok(response) => {
                     specs.set(response.items);
                     loading.set(false);
-                },
+                }
                 Err(message) => {
                     list_error.set(Some(message));
                     loading.set(false);
-                },
+                }
             }
         });
     });

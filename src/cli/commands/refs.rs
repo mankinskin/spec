@@ -1,18 +1,8 @@
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 
-use spec_api::{
-    SpecStore,
-    code_ref::validate_refs,
-};
+use spec_api::{SpecStore, code_ref::validate_refs};
 
-use crate::cli::{
-    CliRunError,
-    RefsArgs,
-    RefsSubcommand,
-};
+use crate::cli::{CliRunError, RefsArgs, RefsSubcommand};
 
 pub(crate) fn cmd_refs(
     args: RefsArgs,
@@ -26,24 +16,17 @@ pub(crate) fn cmd_refs(
             code_workspace_root,
         }) => {
             let workspace_root = code_workspace_root.unwrap_or_else(|| {
-                inferred_workspace_root_for_spec(
-                    store,
-                    spec.id,
-                    default_workspace_root,
-                )
+                inferred_workspace_root_for_spec(store, spec.id, default_workspace_root)
             });
             let canonical_workspace_root =
-                memory_kernel::workspace::canonicalize_workspace_root_strict(
-                    &workspace_root,
-                )
-                .map_err(|error| {
-                    CliRunError::BadRequest(format!(
-                        "workspace root canonicalization failed for '{}': {error}",
-                        workspace_root.display()
-                    ))
-                })?;
-            let results =
-                validate_refs(&spec.code_refs, &canonical_workspace_root);
+                memory_kernel::workspace::canonicalize_workspace_root_strict(&workspace_root)
+                    .map_err(|error| {
+                        CliRunError::BadRequest(format!(
+                            "workspace root canonicalization failed for '{}': {error}",
+                            workspace_root.display()
+                        ))
+                    })?;
+            let results = validate_refs(&spec.code_refs, &canonical_workspace_root);
             let items: Vec<Value> = results
                 .iter()
                 .map(|r| {
@@ -57,8 +40,7 @@ pub(crate) fn cmd_refs(
                     })
                 })
                 .collect();
-            let all_valid =
-                results.iter().all(|r| r.file_exists && r.line_range_valid);
+            let all_valid = results.iter().all(|r| r.file_exists && r.line_range_valid);
             Ok(json!({
                 "command": "refs_validate",
                 "status": "ok",
@@ -70,7 +52,7 @@ pub(crate) fn cmd_refs(
                 "count": items.len(),
                 "results": items,
             }))
-        },
+        }
         None => {
             let refs: Vec<Value> = spec
                 .code_refs
@@ -93,21 +75,17 @@ pub(crate) fn cmd_refs(
                 "count": refs.len(),
                 "refs": refs,
             }))
-        },
+        }
     }
 }
 
-fn render_workspace_root_for_payload(
-    path: &std::path::Path
-) -> Result<String, CliRunError> {
-    memory_kernel::workspace::normalize_path_for_display_strict(path).map_err(
-        |error| {
-            CliRunError::BadRequest(format!(
-                "workspace root payload normalization failed for '{}': {error}",
-                path.display()
-            ))
-        },
-    )
+fn render_workspace_root_for_payload(path: &std::path::Path) -> Result<String, CliRunError> {
+    memory_kernel::workspace::normalize_path_for_display_strict(path).map_err(|error| {
+        CliRunError::BadRequest(format!(
+            "workspace root payload normalization failed for '{}': {error}",
+            path.display()
+        ))
+    })
 }
 
 fn inferred_workspace_root_for_spec(
@@ -121,14 +99,9 @@ fn inferred_workspace_root_for_spec(
         .ok()
         .flatten()
         .map(|indexed| {
-            let store_root = memory_kernel::workspace::resolve_store_root_from(
-                &indexed.path,
-                ".spec",
-            );
-            memory_kernel::workspace::resolve_workspace_root_from_store_root(
-                &store_root,
-                ".spec",
-            )
+            let store_root =
+                memory_kernel::workspace::resolve_store_root_from(&indexed.path, ".spec");
+            memory_kernel::workspace::resolve_workspace_root_from_store_root(&store_root, ".spec")
         })
         .unwrap_or_else(|| default_workspace_root.to_path_buf())
 }
@@ -140,10 +113,7 @@ mod tests {
     use serde_json::Value;
     use spec_api::{
         SpecManifest,
-        code_ref::{
-            CodeRef,
-            SymbolKind,
-        },
+        code_ref::{CodeRef, SymbolKind},
     };
     use tempfile::tempdir;
 
@@ -156,12 +126,10 @@ mod tests {
         let store_root = workspace_root.join(".workflow-tools").join("spec");
         fs::create_dir_all(&store_root).unwrap();
         fs::create_dir_all(file_root.join("src")).unwrap();
-        fs::write(file_root.join("src/lib.rs"), "pub fn target() {}\n")
-            .unwrap();
+        fs::write(file_root.join("src/lib.rs"), "pub fn target() {}\n").unwrap();
 
         let mut store = SpecStore::init(&store_root).unwrap();
-        let mut manifest =
-            SpecManifest::new("spec-cli/refs", "Refs", "spec-cli");
+        let mut manifest = SpecManifest::new("spec-cli/refs", "Refs", "spec-cli");
         manifest.code_refs = vec![CodeRef {
             file: "src/lib.rs".to_string(),
             symbol: "target".to_string(),
@@ -175,27 +143,21 @@ mod tests {
         (store, id)
     }
 
-    fn validate_payload(
-        payload: &Value,
-        expected_root: &std::path::Path,
-    ) {
+    fn validate_payload(payload: &Value, expected_root: &std::path::Path) {
         assert_eq!(payload["command"], "refs_validate");
         assert_eq!(payload["valid"], true);
         assert_eq!(payload["count"], 1);
         assert_eq!(
             payload["workspace_root"],
-            Value::String(
-                render_workspace_root_for_payload(expected_root).unwrap(),
-            )
+            Value::String(render_workspace_root_for_payload(expected_root).unwrap(),)
         );
     }
 
     #[test]
     fn render_workspace_root_for_payload_normalizes_separators() {
-        let rendered = render_workspace_root_for_payload(std::path::Path::new(
-            r"C:\\repo\\memory-api",
-        ))
-        .unwrap();
+        let rendered =
+            render_workspace_root_for_payload(std::path::Path::new(r"C:\\repo\\memory-api"))
+                .unwrap();
 
         assert_eq!(rendered, "/c/repo/memory-api");
     }
@@ -203,10 +165,9 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn render_workspace_root_for_payload_strips_verbatim_prefix() {
-        let rendered = render_workspace_root_for_payload(std::path::Path::new(
-            r"\\?\C:\repo\memory-api",
-        ))
-        .unwrap();
+        let rendered =
+            render_workspace_root_for_payload(std::path::Path::new(r"\\?\C:\repo\memory-api"))
+                .unwrap();
 
         assert_eq!(rendered, "/c/repo/memory-api");
     }
@@ -214,10 +175,9 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn render_workspace_root_for_payload_preserves_unc_root() {
-        let rendered = render_workspace_root_for_payload(std::path::Path::new(
-            r"\\server\share\memory-api",
-        ))
-        .unwrap();
+        let rendered =
+            render_workspace_root_for_payload(std::path::Path::new(r"\\server\share\memory-api"))
+                .unwrap();
 
         assert_eq!(rendered, "//server/share/memory-api");
     }
@@ -237,8 +197,7 @@ mod tests {
     fn refs_validate_uses_default_workspace_root() {
         let dir = tempdir().unwrap();
         let workspace_root = dir.path().join("repo");
-        let (store, id) =
-            create_spec_with_ref(&workspace_root, &workspace_root);
+        let (store, id) = create_spec_with_ref(&workspace_root, &workspace_root);
 
         let payload = cmd_refs(
             RefsArgs {

@@ -1,10 +1,5 @@
 use dioxus::prelude::*;
-use viewer_api_dioxus::{
-    Layout,
-    Overlay,
-    PageHeader,
-    ThemeSettings,
-};
+use viewer_api_dioxus::{Layout, Overlay, PageHeader, ThemeSettings};
 
 use crate::components::spec_graph::SpecGraphPage as SpecGraphView;
 

@@ -1,14 +1,7 @@
 use std::cell::RefCell;
 
 use dioxus::prelude::*;
-use pulldown_cmark::{
-    html,
-    CowStr,
-    Event,
-    Options,
-    Parser,
-    Tag,
-};
+use pulldown_cmark::{html, CowStr, Event, Options, Parser, Tag};
 use viewer_api_dioxus::Prefetcher;
 
 use crate::routes::Route;
@@ -83,10 +76,7 @@ fn render_spec_markdown_cached(content: &str) -> String {
 }
 
 #[component]
-pub fn SpecMarkdownSurface(
-    content: String,
-    #[props(default)] class: String,
-) -> Element {
+pub fn SpecMarkdownSurface(content: String, #[props(default)] class: String) -> Element {
     let html = render_spec_markdown_cached(&content);
     let surface_class = if class.is_empty() {
         "spec-markdown-surface".to_string()
@@ -112,8 +102,7 @@ mod tests {
 
     fn reset_markdown_cache() {
         SPEC_MARKDOWN_HTML_CACHE.with(|cache| {
-            *cache.borrow_mut() =
-                Prefetcher::with_capacity(SPEC_MARKDOWN_HTML_CACHE_CAPACITY);
+            *cache.borrow_mut() = Prefetcher::with_capacity(SPEC_MARKDOWN_HTML_CACHE_CAPACITY);
         });
     }
 
@@ -134,12 +123,8 @@ mod tests {
     fn preserves_non_spec_links() {
         reset_markdown_cache();
 
-        let html = render_spec_markdown_cached(
-            "See [repository docs](https://example.com/docs).",
-        );
+        let html = render_spec_markdown_cached("See [repository docs](https://example.com/docs).");
 
-        assert!(html.contains(
-            r#"<a href="https://example.com/docs">repository docs</a>"#
-        ));
+        assert!(html.contains(r#"<a href="https://example.com/docs">repository docs</a>"#));
     }
 }

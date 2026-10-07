@@ -1,28 +1,16 @@
-use std::{
-    collections::BTreeMap,
-    fs,
-    path::PathBuf,
-};
+use std::{collections::BTreeMap, fs, path::PathBuf};
 
 use memory_kernel::{
     generated_markdown::GeneratedMarkdownSnippet,
-    model::{
-        edge::EdgeRecord,
-        filesystem::ScanRoot,
-    },
+    model::{edge::EdgeRecord, filesystem::ScanRoot},
     workspace_policy::WORKSPACE_POLICY_FILE,
 };
 use serde_json::Value;
 use tempfile::TempDir;
 
 use crate::{
-    AcceptanceCriterion,
-    EvidenceRequirement,
-    ExpectedProperty,
-    FulfillmentStatus,
-    FulfillmentSubjectKind,
-    FulfillmentSummary,
-    SpecContractMode,
+    AcceptanceCriterion, EvidenceRequirement, ExpectedProperty, FulfillmentStatus,
+    FulfillmentSubjectKind, FulfillmentSummary, SpecContractMode,
 };
 
 use super::*;
@@ -42,18 +30,11 @@ fn setup() -> (TempDir, SpecStore) {
     (tmp, store)
 }
 
-fn make_spec(
-    slug: &str,
-    title: &str,
-) -> SpecManifest {
+fn make_spec(slug: &str, title: &str) -> SpecManifest {
     SpecManifest::new(slug, title, "test-component")
 }
 
-fn make_v2_spec(
-    slug: &str,
-    title: &str,
-    component_id: &str,
-) -> SpecManifest {
+fn make_v2_spec(slug: &str, title: &str, component_id: &str) -> SpecManifest {
     let mut spec = make_spec(slug, title);
     spec.set_format_version(crate::CURRENT_FORMAT_VERSION);
     spec.set_component_id(component_id);
@@ -69,10 +50,7 @@ fn setup_local_store() -> (TempDir, PathBuf, PathBuf, SpecStore) {
     (tmp, repo, store_root, store)
 }
 
-fn make_expectation_oriented_spec(
-    slug: &str,
-    title: &str,
-) -> SpecManifest {
+fn make_expectation_oriented_spec(slug: &str, title: &str) -> SpecManifest {
     let mut spec = make_spec(slug, title);
     spec.set_contract_mode(Some(SpecContractMode::ExpectationOriented));
     spec.set_expected_properties(vec![ExpectedProperty {
@@ -133,20 +111,21 @@ fn v2_manifest_requires_explicit_identity_and_round_trips() {
     let id = store.create(&spec, "body", None).unwrap();
     let fetched = store.get(&id.to_string()).unwrap();
 
-    assert_eq!(fetched.format_version(), Some(crate::CURRENT_FORMAT_VERSION));
+    assert_eq!(
+        fetched.format_version(),
+        Some(crate::CURRENT_FORMAT_VERSION)
+    );
     assert_eq!(fetched.component_id(), Some("root-v2"));
 }
 
 #[test]
 fn v2_component_ids_are_unique_and_immutable() {
     let (_tmp, mut store) = setup();
-    store.create(&make_v2_spec("root/one", "One", "shared"), "body", None).unwrap();
+    store
+        .create(&make_v2_spec("root/one", "One", "shared"), "body", None)
+        .unwrap();
 
-    let duplicate = store.create(
-        &make_v2_spec("root/two", "Two", "shared"),
-        "body",
-        None,
-    );
+    let duplicate = store.create(&make_v2_spec("root/two", "Two", "shared"), "body", None);
     assert!(matches!(duplicate, Err(SpecError::DuplicateComponentId(_))));
 
     let id = store.get("root/one").unwrap().id;
@@ -233,10 +212,7 @@ fn create_writes_body_md_without_description_md() {
 fn create_and_get_round_trip_structured_contract_fields() {
     let (_tmp, mut store) = setup();
 
-    let spec = make_expectation_oriented_spec(
-        "root/structured-contract",
-        "Structured Contract",
-    );
+    let spec = make_expectation_oriented_spec("root/structured-contract", "Structured Contract");
     let id = store.create(&spec, "body v1", None).unwrap();
 
     let fetched = store.get(&id.to_string()).unwrap();
@@ -299,17 +275,13 @@ fn no_op_update_does_not_append_history_revision() {
 fn health_reports_missing_and_satisfied_contract_requirements() {
     let (_tmp, mut store) = setup();
 
-    let spec = make_expectation_oriented_spec(
-        "root/contract-health",
-        "Contract Health",
-    );
+    let spec = make_expectation_oriented_spec("root/contract-health", "Contract Health");
     let id = store.create(&spec, "body v1", None).unwrap();
 
     let report = store.health(&id.to_string()).unwrap();
     assert_eq!(report.specs_checked, 1);
     assert!(report.issues.iter().any(|issue| {
-        issue.issue
-            == "missing fulfillment summary for evidence requirement 'evidence-doc'"
+        issue.issue == "missing fulfillment summary for evidence requirement 'evidence-doc'"
     }));
 
     let mut patch = BTreeMap::new();
@@ -346,8 +318,10 @@ fn health_reports_cross_workspace_and_dangling_depends_on_edges() {
     )
     .unwrap();
 
-    let mut parent_store =
-        SpecStore::init(&memory_kernel::workspace::canonical_store_root(&repo, ".spec")).unwrap();
+    let mut parent_store = SpecStore::init(&memory_kernel::workspace::canonical_store_root(
+        &repo, ".spec",
+    ))
+    .unwrap();
     let mut child_store = SpecStore::init(&memory_kernel::workspace::canonical_store_root(
         &child_repo,
         ".spec",
@@ -382,22 +356,24 @@ fn health_reports_cross_workspace_and_dangling_depends_on_edges() {
         .unwrap();
 
     let report = child_store.health(&child_id.to_string()).unwrap();
-    assert!(report.issues.iter().any(|issue| {
-        issue.id == child_id && issue.issue.starts_with("cross_workspace_edge:")
-    }));
-    assert!(report.issues.iter().any(|issue| {
-        issue.id == child_id && issue.issue.starts_with("dangling_edge:")
-    }));
+    assert!(
+        report.issues.iter().any(|issue| {
+            issue.id == child_id && issue.issue.starts_with("cross_workspace_edge:")
+        })
+    );
+    assert!(
+        report
+            .issues
+            .iter()
+            .any(|issue| { issue.id == child_id && issue.issue.starts_with("dangling_edge:") })
+    );
 }
 
 #[test]
 fn search_indexes_structured_contract_text() {
     let (_tmp, mut store) = setup();
 
-    let spec = make_expectation_oriented_spec(
-        "root/contract-search",
-        "Contract Search",
-    );
+    let spec = make_expectation_oriented_spec("root/contract-search", "Contract Search");
     store.create(&spec, "", None).unwrap();
 
     let results = store
@@ -483,11 +459,7 @@ fn update_generated_section_creates_and_renders_named_section() {
     ];
 
     store
-        .update_generated_section(
-            "root/generated-section",
-            "requirements",
-            &snippets,
-        )
+        .update_generated_section("root/generated-section", "requirements", &snippets)
         .unwrap();
 
     let sections = store.list_sections("root/generated-section").unwrap();
@@ -510,8 +482,7 @@ fn update_generated_section_creates_and_renders_named_section() {
 fn update_generated_section_preserves_existing_crlf_style() {
     let (_tmp, mut store) = setup();
 
-    let spec =
-        make_spec("root/generated-section-crlf", "Generated Section CRLF");
+    let spec = make_spec("root/generated-section-crlf", "Generated Section CRLF");
     let id = store.create(&spec, "body v1", None).unwrap();
     store
         .add_section(
@@ -527,18 +498,12 @@ fn update_generated_section_preserves_existing_crlf_style() {
     )];
 
     store
-        .update_generated_section(
-            "root/generated-section-crlf",
-            "requirements",
-            &snippets,
-        )
+        .update_generated_section("root/generated-section-crlf", "requirements", &snippets)
         .unwrap();
 
     let indexed = store.entity_store().get_indexed(&id).unwrap().unwrap();
-    let content = fs::read_to_string(
-        indexed.path.join("sections").join("requirements.md"),
-    )
-    .unwrap();
+    let content =
+        fs::read_to_string(indexed.path.join("sections").join("requirements.md")).unwrap();
 
     assert_eq!(
         content,
@@ -614,8 +579,7 @@ fn update_generated_artifacts_round_trips_body_and_sections() {
     );
 
     let indexed = store.entity_store().get_indexed(&id).unwrap().unwrap();
-    let generated =
-        fs::read_to_string(indexed.path.join("generated.toml")).unwrap();
+    let generated = fs::read_to_string(indexed.path.join("generated.toml")).unwrap();
     assert!(generated.contains("[body]"));
     assert!(generated.contains("[sections.design]"));
     assert!(generated.contains("[sections.requirements]"));
@@ -717,8 +681,7 @@ fn update_generated_artifacts_rejects_invalid_targets_and_paths() {
 fn update_generated_artifacts_deletes_empty_descriptor_file() {
     let (_tmp, mut store) = setup();
 
-    let spec =
-        make_spec("root/generated-artifact-clear", "Generated Artifact Clear");
+    let spec = make_spec("root/generated-artifact-clear", "Generated Artifact Clear");
     let id = store.create(&spec, "body v1", None).unwrap();
 
     store
@@ -757,12 +720,8 @@ fn open_creates_gitignore_for_local_spec_artifacts() {
 
     SpecStore::init(tmp.path()).unwrap();
 
-    let gitignore = fs::read_to_string(
-        tmp.path()
-            .join(".workflow-tools/spec")
-            .join(".gitignore"),
-    )
-    .unwrap();
+    let gitignore =
+        fs::read_to_string(tmp.path().join(".workflow-tools/spec").join(".gitignore")).unwrap();
     assert!(gitignore.contains("entities.db"));
     assert!(gitignore.contains("entities.db-shm"));
     assert!(gitignore.contains("entities.db-wal"));
@@ -777,12 +736,7 @@ fn open_registers_default_specs_scan_root() {
     let roots = store.entity_store().list_scan_roots().unwrap();
 
     assert!(roots.iter().any(|root| {
-        root.path
-            == tmp
-                .path()
-                .join(".workflow-tools/spec")
-                .join("specs")
-            && root.label == "specs"
+        root.path == tmp.path().join(".workflow-tools/spec").join("specs") && root.label == "specs"
     }));
 }
 

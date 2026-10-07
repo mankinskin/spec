@@ -4,27 +4,13 @@
 //! and restored on mount for the browse filters shown on `/specs`.
 
 use dioxus::prelude::*;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use viewer_api_dioxus::{
-    graph3d::CameraMode,
-    Camera,
-    Layout3D,
-};
+use viewer_api_dioxus::{graph3d::CameraMode, Camera, Layout3D};
 
 use crate::{
-    components::spec_graph::{
-        LayoutAlgorithm,
-        LayoutParams,
-        SELECTED_NODE_ZOOM_FACTOR_DEFAULT,
-    },
-    types::{
-        SpecGraphEdge,
-        SpecGraphNode,
-    },
+    components::spec_graph::{LayoutAlgorithm, LayoutParams, SELECTED_NODE_ZOOM_FACTOR_DEFAULT},
+    types::{SpecGraphEdge, SpecGraphNode},
 };
 
 // ── localStorage key ──────────────────────────────────────────────────────────
@@ -121,18 +107,12 @@ pub struct SpecNavigationStore {
 impl SpecNavigationStore {
     pub fn use_store() -> Self {
         Self {
-            global_spec_view: use_signal(|| {
-                crate::routes::DEFAULT_SPEC_VIEW.to_string()
-            }),
+            global_spec_view: use_signal(|| crate::routes::DEFAULT_SPEC_VIEW.to_string()),
             last_view_by_spec: use_signal(HashMap::new),
         }
     }
 
-    pub fn remember_spec_view(
-        mut self,
-        spec_id: &str,
-        view: &str,
-    ) {
+    pub fn remember_spec_view(mut self, spec_id: &str, view: &str) {
         let view = crate::routes::canonical_spec_view(Some(view)).to_string();
 
         if *self.global_spec_view.peek() != view {
@@ -146,13 +126,9 @@ impl SpecNavigationStore {
         }
     }
 
-    pub fn resolve_spec_view(
-        self,
-        spec_id: &str,
-    ) -> String {
-        let global_view = crate::routes::canonical_spec_view(Some(
-            self.global_spec_view.read().as_str(),
-        ));
+    pub fn resolve_spec_view(self, spec_id: &str) -> String {
+        let global_view =
+            crate::routes::canonical_spec_view(Some(self.global_spec_view.read().as_str()));
         if crate::routes::is_spec_detail_view_available(spec_id, global_view) {
             return global_view.to_string();
         }
@@ -172,10 +148,7 @@ impl SpecNavigationStore {
         crate::routes::DEFAULT_SPEC_VIEW.to_string()
     }
 
-    pub fn resolve_spec_detail_path(
-        self,
-        spec_id: &str,
-    ) -> String {
+    pub fn resolve_spec_detail_path(self, spec_id: &str) -> String {
         let view = self.resolve_spec_view(spec_id);
         crate::routes::Route::spec_detail_path(spec_id, Some(view.as_str()))
     }
@@ -217,9 +190,7 @@ impl SpecGraphStore {
             camera_mode: use_signal(CameraMode::default),
             center_camera_on_selected_node: use_signal(|| false),
             zoom_to_selected_node: use_signal(|| false),
-            selected_node_zoom_factor: use_signal(|| {
-                SELECTED_NODE_ZOOM_FACTOR_DEFAULT
-            }),
+            selected_node_zoom_factor: use_signal(|| SELECTED_NODE_ZOOM_FACTOR_DEFAULT),
             auto_layout_selected_node: use_signal(|| false),
             committed_algo: use_signal(|| LayoutAlgorithm::ForceDirected),
             committed_params: use_signal(LayoutParams::default),

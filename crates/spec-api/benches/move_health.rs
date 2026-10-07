@@ -174,17 +174,14 @@ fn bench_spec_move_preflight_by_link_density(c: &mut Criterion) {
         let workspace = MoveBenchmarkWorkspace::new();
         let (store, target_root, ids) = build_spec_fixture(&workspace, MOVED_COUNT, density, 0);
         let id = ids[0];
-        c.bench_function(
-            &name,
-            |b| {
-                b.iter(|| {
-                    let plan = store
-                        .plan_move_preflight(&id, &target_root)
-                        .expect("plan preflight");
-                    criterion::black_box(plan.reference_visibility.len());
-                });
-            },
-        );
+        c.bench_function(&name, |b| {
+            b.iter(|| {
+                let plan = store
+                    .plan_move_preflight(&id, &target_root)
+                    .expect("plan preflight");
+                criterion::black_box(plan.reference_visibility.len());
+            });
+        });
     }
 }
 

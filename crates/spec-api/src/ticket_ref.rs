@@ -1,7 +1,4 @@
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// A structured reference from a spec to a ticket, carried on

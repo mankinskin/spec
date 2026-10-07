@@ -21,8 +21,7 @@ fn test_serde_round_trip() {
 
 #[test]
 fn test_set_parent() {
-    let mut m =
-        SpecManifest::new("ticket-api/store/create", "create", "ticket-api");
+    let mut m = SpecManifest::new("ticket-api/store/create", "create", "ticket-api");
     let parent_id = uuid::Uuid::new_v4().to_string();
     m.set_parent(&parent_id);
     assert_eq!(m.parent(), Some(parent_id.as_str()));
@@ -30,8 +29,7 @@ fn test_set_parent() {
 
 #[test]
 fn test_set_scope() {
-    let mut m =
-        SpecManifest::new("ticket-api/store", "TicketStore", "ticket-api");
+    let mut m = SpecManifest::new("ticket-api/store", "TicketStore", "ticket-api");
     m.set_scope("public");
     assert_eq!(m.scope(), Some("public"));
 }
@@ -40,8 +38,7 @@ fn test_set_scope() {
 fn related_tickets_round_trips_through_toml() {
     use crate::ticket_ref::TicketRef;
 
-    let mut m =
-        SpecManifest::new("ticket-api/store", "TicketStore", "ticket-api");
+    let mut m = SpecManifest::new("ticket-api/store", "TicketStore", "ticket-api");
     let refs = vec![TicketRef {
         ticket_id: uuid::Uuid::new_v4(),
         workspace: "default".to_string(),
@@ -59,8 +56,7 @@ fn related_tickets_round_trips_through_toml() {
 fn set_related_tickets_empty_removes_key() {
     use crate::ticket_ref::TicketRef;
 
-    let mut m =
-        SpecManifest::new("ticket-api/store", "TicketStore", "ticket-api");
+    let mut m = SpecManifest::new("ticket-api/store", "TicketStore", "ticket-api");
     m.set_related_tickets(vec![TicketRef {
         ticket_id: uuid::Uuid::new_v4(),
         workspace: "default".to_string(),
@@ -77,8 +73,7 @@ fn set_related_tickets_empty_removes_key() {
 fn legacy_ticket_link_entries_detects_untyped_strings_and_not_typed_entries() {
     use crate::ticket_ref::TicketRef;
 
-    let mut m =
-        SpecManifest::new("ticket-api/store", "TicketStore", "ticket-api");
+    let mut m = SpecManifest::new("ticket-api/store", "TicketStore", "ticket-api");
     m.extra.insert(
         "related_tickets".to_string(),
         serde_json::json!(["0386c4d0-0000-0000-0000-000000000000"]),
@@ -104,8 +99,7 @@ fn legacy_ticket_link_entries_detects_untyped_strings_and_not_typed_entries() {
 
 #[test]
 fn test_contract_fields_round_trip_through_toml() {
-    let mut manifest =
-        SpecManifest::new("spec-api/contract", "Contract", "spec-api");
+    let mut manifest = SpecManifest::new("spec-api/contract", "Contract", "spec-api");
     manifest.set_contract_mode(Some(SpecContractMode::ExpectationOriented));
     manifest.set_expected_properties(vec![ExpectedProperty {
         id: "prop-visible".to_string(),
@@ -153,11 +147,7 @@ fn test_health_issues_ignore_legacy_specs_without_structured_contract() {
 
 #[test]
 fn test_health_issues_surface_missing_and_unsatisfied_contract_requirements() {
-    let mut manifest = SpecManifest::new(
-        "spec-api/contract-health",
-        "Contract Health",
-        "spec-api",
-    );
+    let mut manifest = SpecManifest::new("spec-api/contract-health", "Contract Health", "spec-api");
     manifest.set_contract_mode(Some(SpecContractMode::ExpectationOriented));
     manifest.set_expected_properties(vec![ExpectedProperty {
         id: "prop-visible".to_string(),
@@ -178,8 +168,7 @@ fn test_health_issues_surface_missing_and_unsatisfied_contract_requirements() {
 
     let issues = manifest.health_issues();
     assert!(issues.contains(
-        &"missing fulfillment summary for evidence requirement 'evidence-doc'"
-            .to_string(),
+        &"missing fulfillment summary for evidence requirement 'evidence-doc'".to_string(),
     ));
 
     manifest.set_fulfillment_summaries(vec![FulfillmentSummary {
@@ -190,9 +179,7 @@ fn test_health_issues_surface_missing_and_unsatisfied_contract_requirements() {
         detail: Some("Validation is still blocked.".to_string()),
     }]);
     let issues = manifest.health_issues();
-    assert!(issues.contains(
-        &"unsatisfied evidence requirement 'evidence-doc'".to_string(),
-    ));
+    assert!(issues.contains(&"unsatisfied evidence requirement 'evidence-doc'".to_string(),));
 
     manifest.set_fulfillment_summaries(vec![FulfillmentSummary {
         id: "summary-doc".to_string(),

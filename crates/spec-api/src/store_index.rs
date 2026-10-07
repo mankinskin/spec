@@ -22,27 +22,15 @@
 //! (`--check`) compare rendered output against the working tree without churn.
 
 use std::{
-    collections::{
-        BTreeMap,
-        BTreeSet,
-        HashMap,
-    },
+    collections::{BTreeMap, BTreeSet, HashMap},
     path::Path,
 };
 
-use chrono::{
-    DateTime,
-    Utc,
-};
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use memory_kernel::{
-    ContentKind,
-    IndexEntry,
-    IndexRef,
-    IndexRelations,
-    IndexSidecar,
-    RelationKind,
+    ContentKind, IndexEntry, IndexRef, IndexRelations, IndexSidecar, RelationKind,
 };
 
 use crate::manifest::SpecManifest;
@@ -52,16 +40,14 @@ use crate::manifest::SpecManifest;
 /// Uses an `-index` suffixed prefix so index/catalog files are never confused
 /// with spec *content* files (which carry `spec-api:*` provenance) — decision
 /// Q2.1 of the `rendering-pipeline-integration` spec.
-pub const SPEC_INDEX_FILE_COMMENT: &str =
-    "<!-- spec-index:file generated=true -->";
+pub const SPEC_INDEX_FILE_COMMENT: &str = "<!-- spec-index:file generated=true -->";
 
 /// Per-entry provenance prefix (Q2.1). Each entry marker also carries a digest
 /// prefix (Q4.1): `<!-- spec-index:entry id=<uuid> slug=<slug> digest=<hex12> -->`.
 pub const SPEC_INDEX_ENTRY_PREFIX: &str = "spec-index:entry";
 
 /// Provenance comment for the generated agent-hook file.
-pub const SPEC_INDEX_AGENT_HOOK_COMMENT: &str =
-    "<!-- spec-index:agent-hook generated=true -->";
+pub const SPEC_INDEX_AGENT_HOOK_COMMENT: &str = "<!-- spec-index:agent-hook generated=true -->";
 
 /// Repository-relative path of the generated agent-hook file (D1).
 pub const SPEC_INDEX_AGENT_HOOK_PATH: &str = ".agents/spec-catalog.md";
@@ -70,8 +56,7 @@ pub const SPEC_INDEX_AGENT_HOOK_PATH: &str = ".agents/spec-catalog.md";
 pub const SPEC_INDEX_TREE_DIR: &str = "tree";
 
 /// Per-entry provenance comment written at the top of generated tree pages.
-pub const SPEC_INDEX_TREE_ENTRY_COMMENT: &str =
-    "<!-- spec-index:tree-entry generated=true -->";
+pub const SPEC_INDEX_TREE_ENTRY_COMMENT: &str = "<!-- spec-index:tree-entry generated=true -->";
 
 /// One joined spec source: the manifest, its resolved path, and its raw body.
 ///
@@ -159,8 +144,7 @@ pub fn generate_spec_catalog(
 
     let tree_paths = build_tree_paths(&sidecar, &extras, store_dir);
     let tree_markdown = render_tree_markdown(&sidecar, &tree_paths, &extras);
-    let readme_markdown =
-        render_catalog_markdown(&sidecar, &tree_paths, &extras);
+    let readme_markdown = render_catalog_markdown(&sidecar, &tree_paths, &extras);
     let agent_hook_markdown = render_agent_hook(&sidecar, store_dir, &extras);
 
     SpecCatalogArtifacts {
@@ -196,11 +180,8 @@ impl SpecDisplayExtra {
                 .scope()
                 .map(str::to_string)
                 .filter(|s| !s.is_empty()),
-            acceptance_criteria: extract_section(
-                &source.body,
-                "Acceptance Criteria",
-            )
-            .or_else(|| extract_section(&source.body, "Acceptance criteria")),
+            acceptance_criteria: extract_section(&source.body, "Acceptance Criteria")
+                .or_else(|| extract_section(&source.body, "Acceptance criteria")),
         }
     }
 }

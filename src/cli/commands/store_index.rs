@@ -1,29 +1,17 @@
 use std::{
     fs,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
 };
 
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 
 use memory_kernel::generated_markdown::prepare_generated_output;
 use spec_api::{
-    SPEC_INDEX_AGENT_HOOK_PATH,
-    SPEC_INDEX_TREE_DIR,
-    SpecCatalogSource,
-    SpecStore,
+    SPEC_INDEX_AGENT_HOOK_PATH, SPEC_INDEX_TREE_DIR, SpecCatalogSource, SpecStore,
     generate_spec_catalog,
 };
 
-use crate::cli::{
-    CliRunError,
-    StoreIndexArgs,
-};
+use crate::cli::{CliRunError, StoreIndexArgs};
 
 const STORE_DIR: &str = ".workflow-tools/spec";
 
@@ -42,10 +30,8 @@ pub(crate) fn cmd_store_index(
     for entity in &indexed {
         if let Ok((manifest, body)) = store.get_full(&entity.id.to_string()) {
             let spec_file = entity.path.join("spec.toml");
-            let source_path = memory_kernel::index_generator::to_relative_slash(
-                workspace_root,
-                &spec_file,
-            );
+            let source_path =
+                memory_kernel::index_generator::to_relative_slash(workspace_root, &spec_file);
             loaded.push((manifest, source_path, body));
         }
     }
@@ -79,10 +65,8 @@ pub(crate) fn cmd_store_index(
         &artifacts.agent_hook_markdown,
         read_existing(&agent_hook_path).as_deref(),
     );
-    let sidecar_out = prepare_generated_output(
-        &sidecar_toon,
-        read_existing(&sidecar_path).as_deref(),
-    );
+    let sidecar_out =
+        prepare_generated_output(&sidecar_toon, read_existing(&sidecar_path).as_deref());
 
     let mut planned: Vec<(PathBuf, String)> = vec![
         (readme_path.clone(), readme_out),
@@ -98,9 +82,7 @@ pub(crate) fn cmd_store_index(
     if args.check {
         let drifted: Vec<String> = planned
             .iter()
-            .filter(|(path, content)| {
-                read_existing(path).as_deref() != Some(content.as_str())
-            })
+            .filter(|(path, content)| read_existing(path).as_deref() != Some(content.as_str()))
             .map(|(path, _)| display_path(path.as_path()))
             .collect();
 
@@ -138,17 +120,14 @@ pub(crate) fn cmd_store_index(
 
     let mut written = Vec::new();
     if tree_root.exists() {
-        fs::remove_dir_all(&tree_root)
-            .map_err(memory_kernel::error::StorageError::Io)?;
+        fs::remove_dir_all(&tree_root).map_err(memory_kernel::error::StorageError::Io)?;
     }
 
     for (path, content) in planned {
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(memory_kernel::error::StorageError::Io)?;
+            fs::create_dir_all(parent).map_err(memory_kernel::error::StorageError::Io)?;
         }
-        fs::write(&path, content)
-            .map_err(memory_kernel::error::StorageError::Io)?;
+        fs::write(&path, content).map_err(memory_kernel::error::StorageError::Io)?;
         written.push(display_path(path.as_path()));
     }
 
@@ -178,10 +157,7 @@ fn collect_files_recursive(root: &Path) -> Vec<PathBuf> {
     out
 }
 
-fn collect_files_into(
-    dir: &Path,
-    out: &mut Vec<PathBuf>,
-) {
+fn collect_files_into(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };

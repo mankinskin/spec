@@ -1,30 +1,13 @@
 use axum::{
-    extract::{
-        Extension,
-        Path,
-        State,
-    },
+    extract::{Extension, Path, State},
     http::StatusCode,
-    response::{
-        IntoResponse,
-        Json,
-        Response,
-    },
+    response::{IntoResponse, Json, Response},
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use viewer_api::error::{
-    ApiError,
-    RequestIdExt,
-};
+use viewer_api::error::{ApiError, RequestIdExt};
 
-use crate::http::{
-    error::spec_err,
-    state::SpecAppState,
-};
+use crate::http::{error::spec_err, state::SpecAppState};
 
 #[derive(Deserialize)]
 pub struct AddSectionRequest {
@@ -78,7 +61,7 @@ pub async fn get_section(
         Ok(None) => {
             return ApiError::not_found("spec", &rid.0)
                 .into_response_with_status(StatusCode::NOT_FOUND);
-        },
+        }
         Err(e) => return crate::http::error::storage_err(e, &rid.0),
     };
     let file_name = if name.ends_with(".md") {
@@ -95,8 +78,9 @@ pub async fn get_section(
             "content": content,
         }))
         .into_response(),
-        Err(_) => ApiError::not_found("section", &rid.0)
-            .into_response_with_status(StatusCode::NOT_FOUND),
+        Err(_) => {
+            ApiError::not_found("section", &rid.0).into_response_with_status(StatusCode::NOT_FOUND)
+        }
     }
 }
 

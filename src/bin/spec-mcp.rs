@@ -71,26 +71,20 @@ fn resolve_index_root() -> StartupResolution {
             resolution_diagnostics: Vec::new(),
         };
     }
-    let requested_server_root = std::env::current_dir()
-        .unwrap_or_else(|_| PathBuf::from("."));
-    let resolution =
-        memory_kernel::workspace::resolve_store_root_from_with_diagnostics(
-            &requested_server_root,
-            ".spec",
-        );
-    let selected_workspace =
-        memory_kernel::workspace::resolve_workspace_root_from_store_root(
-            &resolution.store_root,
-            ".spec",
-        );
+    let requested_server_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let resolution = memory_kernel::workspace::resolve_store_root_from_with_diagnostics(
+        &requested_server_root,
+        ".spec",
+    );
+    let selected_workspace = memory_kernel::workspace::resolve_workspace_root_from_store_root(
+        &resolution.store_root,
+        ".spec",
+    );
     let candidate_path_chain =
         workspace_candidate_path_chain(&requested_server_root, &selected_workspace);
     let ancestor_lookup_used = requested_server_root != selected_workspace;
     let selection_reason = if resolution.store_root
-        == memory_kernel::workspace::canonical_store_root(
-            &requested_server_root,
-            ".spec",
-        )
+        == memory_kernel::workspace::canonical_store_root(&requested_server_root, ".spec")
     {
         "no existing ancestor store; selected canonical store under requested server root"
     } else {
@@ -110,7 +104,10 @@ fn resolve_index_root() -> StartupResolution {
     }
 }
 
-fn workspace_candidate_path_chain(start: &std::path::Path, selected: &std::path::Path) -> Vec<PathBuf> {
+fn workspace_candidate_path_chain(
+    start: &std::path::Path,
+    selected: &std::path::Path,
+) -> Vec<PathBuf> {
     let mut chain = Vec::new();
     let mut current = start;
     loop {

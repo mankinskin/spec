@@ -1,32 +1,16 @@
 use rmcp::{
-    ErrorData as McpError,
-    ServerHandler,
-    ServiceExt,
-    handler::server::{
-        tool::ToolRouter,
-        wrapper::Parameters,
-    },
+    ErrorData as McpError, ServerHandler, ServiceExt,
+    handler::server::{tool::ToolRouter, wrapper::Parameters},
     model::*,
-    tool,
-    tool_handler,
-    tool_router,
+    tool, tool_handler, tool_router,
     transport::stdio,
 };
 use serde::Serialize;
-use serde_json::{
-    Value,
-    json,
-};
-use spec_api::{
-    SpecStore,
-    error::SpecError,
-};
+use serde_json::{Value, json};
+use spec_api::{SpecStore, error::SpecError};
 use std::{
     borrow::Cow,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
     sync::Arc,
 };
 use tokio::sync::Mutex;
@@ -83,11 +67,8 @@ impl SpecServer {
         store_existed_before_call: bool,
         store_initialized: Option<bool>,
     ) -> McpError {
-        let mut context = Self::workspace_context(
-            resolution,
-            store_existed_before_call,
-            store_initialized,
-        );
+        let mut context =
+            Self::workspace_context(resolution, store_existed_before_call, store_initialized);
         if let Some(data) = error.data.take() {
             if let Some(object) = context.as_object_mut() {
                 object.insert("cause_data".to_string(), data);
@@ -131,9 +112,7 @@ impl SpecServer {
             )
         })?;
         if let Value::Object(object) = &mut value {
-            let scope = object
-                .entry("scope")
-                .or_insert_with(|| json!({}));
+            let scope = object.entry("scope").or_insert_with(|| json!({}));
             if let Value::Object(scope) = scope {
                 scope.extend(
                     Self::workspace_context(
@@ -165,12 +144,9 @@ impl SpecServer {
             store_lock: Arc::new(Mutex::new(())),
         }
     }
-    fn json_result<T: Serialize>(
-        value: &T
-    ) -> Result<CallToolResult, McpError> {
-        let text = serde_json::to_string(value).map_err(|e| {
-            McpError::internal_error(format!("serialization: {e}"), None)
-        })?;
+    fn json_result<T: Serialize>(value: &T) -> Result<CallToolResult, McpError> {
+        let text = serde_json::to_string(value)
+            .map_err(|e| McpError::internal_error(format!("serialization: {e}"), None))?;
         Ok(CallToolResult::success(vec![Content::text(text)]))
     }
     fn json_result_with_scope(
@@ -178,11 +154,10 @@ impl SpecServer {
         active_index_root: &Path,
         requested_workspace: Option<&str>,
     ) -> Result<CallToolResult, McpError> {
-        let workspace_root =
-            memory_kernel::workspace::resolve_workspace_root_from_store_root(
-                active_index_root,
-                ".spec",
-            );
+        let workspace_root = memory_kernel::workspace::resolve_workspace_root_from_store_root(
+            active_index_root,
+            ".spec",
+        );
         let workspace = requested_workspace
             .map(str::trim)
             .filter(|value| !value.is_empty())
@@ -207,16 +182,11 @@ impl SpecServer {
     }
     fn spec_err(e: SpecError) -> McpError {
         match &e {
-            SpecError::NotFound(_) =>
-                McpError::invalid_params(e.to_string(), None),
-            SpecError::InvalidSlug(_) =>
-                McpError::invalid_params(e.to_string(), None),
-            SpecError::DuplicateSlug(_) =>
-                McpError::invalid_params(e.to_string(), None),
-            SpecError::EmptyBody(_) =>
-                McpError::invalid_params(e.to_string(), None),
-            SpecError::NoOpUpdate(_) =>
-                McpError::invalid_params(e.to_string(), None),
+            SpecError::NotFound(_) => McpError::invalid_params(e.to_string(), None),
+            SpecError::InvalidSlug(_) => McpError::invalid_params(e.to_string(), None),
+            SpecError::DuplicateSlug(_) => McpError::invalid_params(e.to_string(), None),
+            SpecError::EmptyBody(_) => McpError::invalid_params(e.to_string(), None),
+            SpecError::NoOpUpdate(_) => McpError::invalid_params(e.to_string(), None),
             _ => McpError::internal_error(format!("spec error: {e}"), None),
         }
     }
@@ -264,21 +234,15 @@ impl SpecServer {
                 resolution_diagnostics: Vec::new(),
             });
         }
-        let requested_workspace =
-            memory_kernel::workspace::normalize_explicit_workspace_selector(
-                Some(&requested_workspace),
-            )
-            .map_err(|error| {
-                McpError::invalid_params(error.to_string(), None)
-            })?
-            .to_string_lossy()
-            .into_owned();
+        let requested_workspace = memory_kernel::workspace::normalize_explicit_workspace_selector(
+            Some(&requested_workspace),
+        )
+        .map_err(|error| McpError::invalid_params(error.to_string(), None))?
+        .to_string_lossy()
+        .into_owned();
         let requested_path = Path::new(&requested_workspace);
         let store_resolution =
-            memory_kernel::workspace::resolve_explicit_store_root_from(
-                requested_path,
-                ".spec",
-            );
+            memory_kernel::workspace::resolve_explicit_store_root_from(requested_path, ".spec");
         if requested_path.is_dir() || Self::is_explicit_store_path(requested_path) {
             let active_index_root = store_resolution.store_root;
             let resolved_workspace_root =
@@ -306,10 +270,8 @@ impl SpecServer {
                     .collect(),
             });
         }
-        let expected_store = memory_kernel::workspace::canonical_store_root(
-            requested_path,
-            ".spec",
-        );
+        let expected_store =
+            memory_kernel::workspace::canonical_store_root(requested_path, ".spec");
         Err(McpError::invalid_params(
             format!(
                 "invalid workspace '{requested_workspace}': expected an existing workspace directory or explicit spec store path; expected store location '{}'",
@@ -352,8 +314,8 @@ impl SpecServer {
             resolution_diagnostics = ?resolution.resolution_diagnostics,
             "spec_mcp_workspace_resolved"
         );
-        let (mut store, store_initialized) =
-            SpecStore::open_or_init_with_status(index_root).map_err(|error| {
+        let (mut store, store_initialized) = SpecStore::open_or_init_with_status(index_root)
+            .map_err(|error| {
                 Self::contextualize_error(
                     Self::spec_err(error),
                     &resolution,
@@ -392,10 +354,7 @@ impl SpecServer {
         workspace: Option<&str>,
         f: impl FnOnce(&mut SpecStore, &Path) -> Result<CallToolResult, McpError>,
     ) -> Result<CallToolResult, McpError> {
-        let workspace =
-            memory_kernel::workspace::normalize_explicit_workspace_selector(
-                workspace,
-            )
+        let workspace = memory_kernel::workspace::normalize_explicit_workspace_selector(workspace)
             .map_err(|error| McpError::invalid_params(error.to_string(), None))?;
         let workspace = workspace.to_string_lossy().into_owned();
         self.with_store(Some(&workspace), f).await
@@ -451,10 +410,7 @@ impl SpecServer {
     ) -> Result<CallToolResult, McpError> {
         self.spec_list_tool(input).await
     }
-    #[tool(
-        name = "spec_search",
-        description = "Full-text search across specs."
-    )]
+    #[tool(name = "spec_search", description = "Full-text search across specs.")]
     pub async fn spec_search(
         &self,
         Parameters(input): Parameters<SearchSpecsInput>,
@@ -498,10 +454,7 @@ impl SpecServer {
     ) -> Result<CallToolResult, McpError> {
         self.spec_section_add_tool(input).await
     }
-    #[tool(
-        name = "spec_section_list",
-        description = "List sections of a spec."
-    )]
+    #[tool(name = "spec_section_list", description = "List sections of a spec.")]
     pub async fn spec_section_list(
         &self,
         Parameters(input): Parameters<SpecRefInput>,
@@ -525,10 +478,7 @@ impl SpecServer {
     ) -> Result<CallToolResult, McpError> {
         self.spec_section_delete_tool(input).await
     }
-    #[tool(
-        name = "spec_scan",
-        description = "Scan and reindex all spec roots."
-    )]
+    #[tool(name = "spec_scan", description = "Scan and reindex all spec roots.")]
     pub async fn spec_scan(
         &self,
         Parameters(input): Parameters<ScanInput>,
@@ -553,9 +503,9 @@ impl SpecServer {
         &self,
         Parameters(input): Parameters<SpecMoveInput>,
     ) -> Result<CallToolResult, McpError> {
-        let to = memory_kernel::workspace::normalize_explicit_workspace_selector(
-            Some(&input.to_workspace_root),
-        )
+        let to = memory_kernel::workspace::normalize_explicit_workspace_selector(Some(
+            &input.to_workspace_root,
+        ))
         .map_err(|err| McpError::invalid_params(err.to_string(), None))?;
         self.with_store(input.workspace.as_deref(), move |store, _| {
             if let Some(ids) = &input.ids {
@@ -595,9 +545,9 @@ impl SpecServer {
         &self,
         Parameters(input): Parameters<SpecMoveInput>,
     ) -> Result<CallToolResult, McpError> {
-        let to = memory_kernel::workspace::normalize_explicit_workspace_selector(
-            Some(&input.to_workspace_root),
-        )
+        let to = memory_kernel::workspace::normalize_explicit_workspace_selector(Some(
+            &input.to_workspace_root,
+        ))
         .map_err(|err| McpError::invalid_params(err.to_string(), None))?;
         self.with_write_store(input.workspace.as_deref(), move |store, _| {
             if let Some(ids) = &input.ids {
@@ -624,14 +574,18 @@ impl SpecServer {
                 McpError::invalid_params("move requires id or ids".to_string(), None)
             })?;
             let id = store.resolve_id(id).map_err(Self::spec_err)?;
-            let report = store.plan_move_preflight(&id, &to).map_err(Self::spec_err)?;
+            let report = store
+                .plan_move_preflight(&id, &to)
+                .map_err(Self::spec_err)?;
             if !report.supported() {
                 return Err(McpError::invalid_params(
                     "move preflight blocked; run spec_move_preflight for details".to_string(),
                     None,
                 ));
             }
-            let outcome = store.execute_move_with_journal(&report).map_err(Self::spec_err)?;
+            let outcome = store
+                .execute_move_with_journal(&report)
+                .map_err(Self::spec_err)?;
             Self::json_result(&json!({
                 "status": "ok", "mode": "apply", "id": id.to_string(),
                 "journal_id": outcome.journal.id, "phase": outcome.journal.phase,
@@ -647,9 +601,10 @@ impl SpecServer {
         &self,
         Parameters(input): Parameters<SpecMoveJournalInput>,
     ) -> Result<CallToolResult, McpError> {
-        let journal = input.id.parse::<uuid::Uuid>().map_err(|e| {
-            McpError::invalid_params(format!("invalid journal id: {e}"), None)
-        })?;
+        let journal = input
+            .id
+            .parse::<uuid::Uuid>()
+            .map_err(|e| McpError::invalid_params(format!("invalid journal id: {e}"), None))?;
         self.with_write_store(input.workspace.as_deref(), move |store, _| {
             let outcome = store.resume_move_with_journal(journal).map_err(Self::spec_err)?;
             Self::json_result(&json!({"status":"ok","mode":"resume","journal_id":outcome.journal.id,"phase":outcome.journal.phase}))
@@ -664,9 +619,10 @@ impl SpecServer {
         &self,
         Parameters(input): Parameters<SpecMoveJournalInput>,
     ) -> Result<CallToolResult, McpError> {
-        let journal = input.id.parse::<uuid::Uuid>().map_err(|e| {
-            McpError::invalid_params(format!("invalid journal id: {e}"), None)
-        })?;
+        let journal = input
+            .id
+            .parse::<uuid::Uuid>()
+            .map_err(|e| McpError::invalid_params(format!("invalid journal id: {e}"), None))?;
         self.with_write_store(input.workspace.as_deref(), move |store, _| {
             let outcome = store.rollback_move_with_journal(journal).map_err(Self::spec_err)?;
             Self::json_result(&json!({"status":"ok","mode":"rollback","journal_id":outcome.journal.id,"phase":outcome.journal.phase}))
@@ -695,7 +651,7 @@ impl ServerHandler for SpecServer {
 }
 // ── Server startup ────────────────────────────────────────────────────────────
 pub async fn run_mcp_server(
-    index_root: PathBuf
+    index_root: PathBuf,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let server = SpecServer::new(index_root);
     tracing::info!("Starting spec-mcp server on stdio (direct store access)");

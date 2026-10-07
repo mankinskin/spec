@@ -1,20 +1,10 @@
 use std::path::PathBuf;
 
 use memory_kernel::model::filesystem::ScanRoot;
-use rmcp::{
-    ErrorData as McpError,
-    model::CallToolResult,
-};
+use rmcp::{ErrorData as McpError, model::CallToolResult};
 use serde_json::json;
 
-use super::{
-    AddRootInput,
-    ScanInput,
-    SectionAddInput,
-    SectionRefInput,
-    SpecRefInput,
-    SpecServer,
-};
+use super::{AddRootInput, ScanInput, SectionAddInput, SectionRefInput, SpecRefInput, SpecServer};
 
 impl SpecServer {
     pub(super) async fn spec_section_add_tool(
@@ -45,8 +35,7 @@ impl SpecServer {
     ) -> Result<CallToolResult, McpError> {
         let workspace = input.workspace.clone();
         self.with_store(workspace.as_deref(), |store, index_root| {
-            let sections =
-                store.list_sections(&input.id).map_err(Self::spec_err)?;
+            let sections = store.list_sections(&input.id).map_err(Self::spec_err)?;
             Self::json_result_with_scope(
                 json!({
                     "status": "ok",
@@ -72,9 +61,7 @@ impl SpecServer {
                 .entity_store()
                 .get_indexed(&uuid)
                 .map_err(Self::storage_err)?
-                .ok_or_else(|| {
-                    McpError::invalid_params("spec not found", None)
-                })?;
+                .ok_or_else(|| McpError::invalid_params("spec not found", None))?;
             let file_name = if input.name.ends_with(".md") {
                 input.name.clone()
             } else {
@@ -82,10 +69,7 @@ impl SpecServer {
             };
             let path = indexed.path.join("sections").join(&file_name);
             let content = std::fs::read_to_string(&path).map_err(|error| {
-                McpError::invalid_params(
-                    format!("section not found: {error}"),
-                    None,
-                )
+                McpError::invalid_params(format!("section not found: {error}"), None)
             })?;
             Self::json_result_with_scope(
                 json!({

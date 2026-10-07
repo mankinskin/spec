@@ -6,18 +6,10 @@ mod store;
 mod types;
 
 use dioxus::prelude::*;
-use viewer_api_dioxus::{
-    Prefetcher,
-    ThemeProvider,
-    ViewerShell,
-    WgpuOverlay,
-};
+use viewer_api_dioxus::{Prefetcher, ThemeProvider, ViewerShell, WgpuOverlay};
 
 use routes::Route;
-use store::{
-    SpecGraphStore,
-    SpecNavigationStore,
-};
+use store::{SpecGraphStore, SpecNavigationStore};
 use types::SpecFullResponse;
 
 /// Type alias for the spec-detail prefetch cache shared across all routes.

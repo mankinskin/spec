@@ -24,10 +24,9 @@ fn init_supports_toon_output() {
         String::from_utf8_lossy(&out.stderr),
     );
 
-    let rendered =
-        String::from_utf8(out.stdout).expect("toon output should be utf-8");
-    let parsed: serde_json::Value = toon_format::decode_default(&rendered)
-        .expect("toon output should decode");
+    let rendered = String::from_utf8(out.stdout).expect("toon output should be utf-8");
+    let parsed: serde_json::Value =
+        toon_format::decode_default(&rendered).expect("toon output should decode");
 
     assert_eq!(parsed["command"], "init");
     assert_eq!(parsed["status"], "ok");
@@ -68,8 +67,7 @@ fn create_with_dot_workspace_reads_back_from_canonical_store() {
         .as_str()
         .expect("create response includes spec id");
     let store_root = workspace.join(".workflow-tools").join("spec");
-    let store =
-        SpecStore::open(&store_root).expect("open canonical Spec store");
+    let store = SpecStore::open(&store_root).expect("open canonical Spec store");
     let spec = store.get(id).expect("read created spec");
 
     assert_eq!(

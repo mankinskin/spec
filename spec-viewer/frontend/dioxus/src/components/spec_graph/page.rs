@@ -1,38 +1,18 @@
 use dioxus::prelude::*;
 use viewer_api_dioxus::{
-    graph3d::{
-        camera::frame_distance,
-        CameraMode,
-    },
-    Camera,
-    CameraCommand,
-    Layout3D,
-    NodeViewTransform,
+    graph3d::{camera::frame_distance, CameraMode},
+    Camera, CameraCommand, Layout3D, NodeViewTransform,
 };
 use wasm_bindgen_futures::spawn_local;
 
-use crate::{
-    api,
-    store::SpecGraphStore,
-    types::SpecGraphNode,
-};
+use crate::{api, store::SpecGraphStore, types::SpecGraphNode};
 
 use super::{
     cards::render_graph_node_cards,
-    layouts::{
-        build_layout,
-        FrustumLayoutContext,
-    },
-    model::{
-        LayoutAlgorithm,
-        SELECTED_NODE_ZOOM_FACTOR_MAX,
-        SELECTED_NODE_ZOOM_FACTOR_MIN,
-    },
+    layouts::{build_layout, FrustumLayoutContext},
+    model::{LayoutAlgorithm, SELECTED_NODE_ZOOM_FACTOR_MAX, SELECTED_NODE_ZOOM_FACTOR_MIN},
     preview::SpecPreviewSidebar,
-    settings::{
-        queue_camera_command,
-        render_graph_settings_panel,
-    },
+    settings::{queue_camera_command, render_graph_settings_panel},
 };
 
 enum GraphPageState {
@@ -62,16 +42,14 @@ pub fn SpecGraphPage() -> Element {
     let camera_seq: Signal<u64> = use_signal(|| 0);
     let last_cam_algo: Signal<LayoutAlgorithm> =
         use_hook(|| Signal::new(LayoutAlgorithm::ForceDirected));
-    let last_focus_request: Signal<Option<CameraFocusRequest>> =
-        use_hook(|| Signal::new(None));
+    let last_focus_request: Signal<Option<CameraFocusRequest>> = use_hook(|| Signal::new(None));
     let applied_frustum_context: Signal<Option<FrustumLayoutContext>> =
         use_hook(|| Signal::new(None));
     let mut preview_id: Signal<Option<String>> = use_signal(|| None);
     let hovered_id: Signal<Option<String>> = use_signal(|| None);
     let nav = use_navigator();
     let preview_open = preview_id.read().is_some();
-    let viewport_insets =
-        graph_viewport_insets(*store.panel_open.read(), preview_open);
+    let viewport_insets = graph_viewport_insets(*store.panel_open.read(), preview_open);
     let node_view_transform = current_node_view_transform(store);
 
     use_graph_fetch(store);
@@ -79,14 +57,14 @@ pub fn SpecGraphPage() -> Element {
     sync_camera_for_algorithm(store, last_cam_algo, camera_cmd, camera_seq);
 
     let (nodes_raw, layout) = match graph_page_state(store) {
-        GraphPageState::Error(message) =>
+        GraphPageState::Error(message) => {
             return render_status(
                 "empty-state",
                 Some("color: var(--error);"),
                 &format!("Failed to load graph: {message}"),
-            ),
-        GraphPageState::Loading(message) =>
-            return render_status("empty-state", None, message),
+            )
+        }
+        GraphPageState::Loading(message) => return render_status("empty-state", None, message),
         GraphPageState::Ready { nodes_raw, layout } => (nodes_raw, layout),
     };
 
@@ -172,12 +150,10 @@ pub fn SpecGraphPage() -> Element {
 
 fn graph_controls_hint(camera_mode: CameraMode) -> &'static str {
     match camera_mode {
-        CameraMode::Orbit => {
-            "Left-drag: orbit · Right-drag: pan · Scroll: zoom · Click card: open"
-        },
+        CameraMode::Orbit => "Left-drag: orbit · Right-drag: pan · Scroll: zoom · Click card: open",
         CameraMode::Free => {
             "Left-drag: look · Right-drag: pan · Scroll: forward/back · Click card: open"
-        },
+        }
     }
 }
 
@@ -195,7 +171,7 @@ fn use_graph_fetch(store: SpecGraphStore) {
                 Ok(response) => {
                     error.set(None);
                     raw.set(Some((response.nodes, response.edges)));
-                },
+                }
                 Err(message) => error.set(Some(message)),
             }
         });
@@ -214,8 +190,7 @@ fn use_layout_sync(
             return;
         };
 
-        let frustum_context =
-            current_frustum_layout_context(store, viewport_insets);
+        let frustum_context = current_frustum_layout_context(store, viewport_insets);
         let generation = *store.layout_generation.read();
         let needs_rebuild = current_layout.peek().is_none()
             || generation != *applied_layout_generation.peek()
@@ -257,11 +232,9 @@ fn current_frustum_layout_context(
         return None;
     }
 
-    let (viewport_width, viewport_height) =
-        current_viewport_size(viewport_insets)?;
-    let camera = canonical_frustum_layout_camera(
-        store.current_camera.read().clone().unwrap_or_default(),
-    );
+    let (viewport_width, viewport_height) = current_viewport_size(viewport_insets)?;
+    let camera =
+        canonical_frustum_layout_camera(store.current_camera.read().clone().unwrap_or_default());
 
     Some(FrustumLayoutContext {
         camera,
@@ -286,12 +259,10 @@ fn canonical_frustum_layout_camera(camera: Camera) -> Camera {
 #[cfg(target_arch = "wasm32")]
 fn current_viewport_size(viewport_insets: [f32; 4]) -> Option<(f32, f32)> {
     let window = web_sys::window()?;
-    let width = window.inner_width().ok()?.as_f64()? as f32
-        - viewport_insets[0]
-        - viewport_insets[2];
-    let height = window.inner_height().ok()?.as_f64()? as f32
-        - viewport_insets[1]
-        - viewport_insets[3];
+    let width =
+        window.inner_width().ok()?.as_f64()? as f32 - viewport_insets[0] - viewport_insets[2];
+    let height =
+        window.inner_height().ok()?.as_f64()? as f32 - viewport_insets[1] - viewport_insets[3];
     Some((width.max(320.0), height.max(240.0)))
 }
 
@@ -312,11 +283,7 @@ fn sync_camera_for_algorithm(
     }
 
     last_cam_algo.set(current_algo);
-    queue_camera_command(
-        camera_cmd,
-        camera_seq,
-        current_algo.preferred_camera(),
-    );
+    queue_camera_command(camera_cmd, camera_seq, current_algo.preferred_camera());
 }
 
 fn sync_camera_for_selected_node(
@@ -327,8 +294,7 @@ fn sync_camera_for_selected_node(
     camera_cmd: Signal<Option<CameraCommand>>,
     camera_seq: Signal<u64>,
 ) {
-    let center_camera_on_selected_node =
-        *store.center_camera_on_selected_node.read();
+    let center_camera_on_selected_node = *store.center_camera_on_selected_node.read();
     let zoom_to_selected_node = *store.zoom_to_selected_node.read();
     let selected_node_zoom_factor = *store.selected_node_zoom_factor.read();
     let current_camera = store.current_camera.read().clone();
@@ -403,10 +369,8 @@ fn selection_camera_request(
             .find(|node| node.id == selected_node_id)?;
         let distance = if zoom_to_selected_node {
             (framed_distance
-                / selected_node_zoom_factor.clamp(
-                    SELECTED_NODE_ZOOM_FACTOR_MIN,
-                    SELECTED_NODE_ZOOM_FACTOR_MAX,
-                ))
+                / selected_node_zoom_factor
+                    .clamp(SELECTED_NODE_ZOOM_FACTOR_MIN, SELECTED_NODE_ZOOM_FACTOR_MAX))
             .clamp(6.0, 120.0)
         } else {
             current_camera
@@ -454,11 +418,7 @@ fn current_node_view_transform(store: SpecGraphStore) -> NodeViewTransform {
         .as_ref()
         .map(|layout| layout.nodes.len())
         .unwrap_or(0) as f32;
-    let screen_fill = frustum_gravity_screen_fill(
-        strength,
-        node_count,
-        params.frustum_overfill,
-    );
+    let screen_fill = frustum_gravity_screen_fill(strength, node_count, params.frustum_overfill);
     NodeViewTransform::camera_plane_view_direction(screen_fill, strength)
 }
 
@@ -467,19 +427,12 @@ fn frustum_gravity_transform_strength(frustum_gravity: f32) -> f32 {
     normalized * normalized * (3.0 - 2.0 * normalized)
 }
 
-fn frustum_gravity_screen_fill(
-    strength: f32,
-    node_count: f32,
-    frustum_overfill: f32,
-) -> f32 {
+fn frustum_gravity_screen_fill(strength: f32, node_count: f32, frustum_overfill: f32) -> f32 {
     let overfill = (node_count.max(12.0) / 12.0).sqrt().clamp(1.0, 3.5);
     overfill * frustum_overfill.clamp(0.5, 2.0) * (0.72 + strength * 0.22)
 }
 
-fn graph_viewport_insets(
-    panel_open: bool,
-    preview_open: bool,
-) -> [f32; 4] {
+fn graph_viewport_insets(panel_open: bool, preview_open: bool) -> [f32; 4] {
     [
         if panel_open {
             SETTINGS_PANEL_VIEWPORT_INSET_LEFT
@@ -511,11 +464,7 @@ fn graph_page_state(store: SpecGraphStore) -> GraphPageState {
     GraphPageState::Ready { nodes_raw, layout }
 }
 
-fn render_status(
-    class: &str,
-    style: Option<&str>,
-    message: &str,
-) -> Element {
+fn render_status(class: &str, style: Option<&str>, message: &str) -> Element {
     rsx! {
         div {
             class: "{class}",
@@ -527,16 +476,8 @@ fn render_status(
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        canonical_frustum_layout_camera,
-        selection_camera_request,
-    };
-    use viewer_api_dioxus::{
-        graph3d::camera::frame_distance,
-        Camera,
-        Layout3D,
-        Node3D,
-    };
+    use super::{canonical_frustum_layout_camera, selection_camera_request};
+    use viewer_api_dioxus::{graph3d::camera::frame_distance, Camera, Layout3D, Node3D};
 
     #[test]
     fn canonical_frustum_layout_camera_ignores_focus_target_and_zoom() {
@@ -601,15 +542,8 @@ mod tests {
             Vec::new(),
         );
 
-        let request = selection_camera_request(
-            &layout,
-            Some("selected"),
-            None,
-            true,
-            true,
-            3.0,
-        )
-        .expect("request");
+        let request = selection_camera_request(&layout, Some("selected"), None, true, true, 3.0)
+            .expect("request");
 
         let expected = frame_distance(layout.bounds().1) / 3.0;
         assert!((request.distance - expected).abs() < 1e-4);

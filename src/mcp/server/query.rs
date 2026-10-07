@@ -1,30 +1,13 @@
 use std::path::PathBuf;
 
-use rmcp::{
-    ErrorData as McpError,
-    model::CallToolResult,
-};
-use serde_json::{
-    Value,
-    json,
-};
+use rmcp::{ErrorData as McpError, model::CallToolResult};
+use serde_json::{Value, json};
 
-use spec_api::{
-    SpecManifest,
-    code_ref::validate_refs,
-};
+use spec_api::{SpecManifest, code_ref::validate_refs};
 
 use super::{
-    CreateSpecInput,
-    GetSpecInput,
-    HealthInput,
-    ListSpecsInput,
-    RefsValidateInput,
-    SearchSpecsInput,
-    SpecRefInput,
-    SpecServer,
-    TreeInput,
-    UpdateSpecInput,
+    CreateSpecInput, GetSpecInput, HealthInput, ListSpecsInput, RefsValidateInput,
+    SearchSpecsInput, SpecRefInput, SpecServer, TreeInput, UpdateSpecInput,
 };
 
 impl SpecServer {
@@ -33,22 +16,18 @@ impl SpecServer {
         input: CreateSpecInput,
     ) -> Result<CallToolResult, McpError> {
         let workspace =
-            memory_kernel::workspace::normalize_explicit_workspace_selector(
-                Some(&input.workspace),
-            )
-            .map_err(|err| McpError::invalid_params(err.to_string(), None))?
-            .to_string_lossy()
-            .into_owned();
+            memory_kernel::workspace::normalize_explicit_workspace_selector(Some(&input.workspace))
+                .map_err(|err| McpError::invalid_params(err.to_string(), None))?
+                .to_string_lossy()
+                .into_owned();
         self.with_store(Some(&workspace), |store, index_root| {
-            let mut manifest =
-                SpecManifest::new(&input.slug, &input.title, &input.component);
+            let mut manifest = SpecManifest::new(&input.slug, &input.title, &input.component);
             manifest.extra.extend(input.fields.clone());
             manifest.set_slug(&input.slug);
             manifest.set_title(&input.title);
             manifest.set_component(&input.component);
             if let Some(parent) = &input.parent {
-                let parent_id =
-                    store.resolve_id(parent).map_err(Self::spec_err)?;
+                let parent_id = store.resolve_id(parent).map_err(Self::spec_err)?;
                 manifest.set_parent(&parent_id.to_string());
             }
             if let Some(scope) = &input.scope {
@@ -81,10 +60,8 @@ impl SpecServer {
         let workspace = input.workspace.clone();
         self.with_store(workspace.as_deref(), |store, index_root| {
             if input.full {
-                let (spec, body) =
-                    store.get_full(&input.id).map_err(Self::spec_err)?;
-                let sections =
-                    store.list_sections(&input.id).map_err(Self::spec_err)?;
+                let (spec, body) = store.get_full(&input.id).map_err(Self::spec_err)?;
+                let sections = store.list_sections(&input.id).map_err(Self::spec_err)?;
                 Self::json_result_with_scope(
                     json!({
                         "status": "ok",
@@ -131,9 +108,7 @@ impl SpecServer {
             for raw in input.fields.clone().unwrap_or_default() {
                 let (key, value) = raw.split_once('=').ok_or_else(|| {
                     McpError::invalid_params(
-                        format!(
-                            "invalid field format '{raw}', expected key=value"
-                        ),
+                        format!("invalid field format '{raw}', expected key=value"),
                         None,
                     )
                 })?;
@@ -175,11 +150,7 @@ impl SpecServer {
             if input.body.is_some() {
                 response.insert("body_updated".to_string(), Value::Bool(true));
             }
-            Self::json_result_with_scope(
-                Value::Object(response),
-                index_root,
-                workspace.as_deref(),
-            )
+            Self::json_result_with_scope(Value::Object(response), index_root, workspace.as_deref())
         })
         .await
     }
@@ -222,10 +193,7 @@ impl SpecServer {
                 };
                 for clause in &input.where_clauses {
                     if let Some((key, value)) = clause.split_once('=') {
-                        let field_val = spec
-                            .extra
-                            .get(key)
-                            .and_then(|field| field.as_str());
+                        let field_val = spec.extra.get(key).and_then(|field| field.as_str());
                         if field_val != Some(value) {
                             continue 'outer;
                         }
@@ -302,8 +270,7 @@ impl SpecServer {
         self.with_store(workspace.as_deref(), |store, index_root| {
             if let Some(root_id) = &input.id {
                 let root = store.get(root_id).map_err(Self::spec_err)?;
-                let descendants =
-                    store.subtree(root_id).map_err(Self::spec_err)?;
+                let descendants = store.subtree(root_id).map_err(Self::spec_err)?;
                 Self::json_result_with_scope(
                     json!({
                         "status": "ok",
@@ -431,11 +398,7 @@ impl SpecServer {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::BTreeMap,
-        fs,
-        path::PathBuf,
-    };
+    use std::{collections::BTreeMap, fs, path::PathBuf};
 
     use serde::Deserialize;
     use spec_api::SpecStore;
@@ -454,8 +417,7 @@ mod tests {
     fn load_contract_parity_fixture() -> ContractParityFixture {
         let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("test-fixtures/spec-contract-parity.json");
-        serde_json::from_str(&fs::read_to_string(fixture_path).unwrap())
-            .unwrap()
+        serde_json::from_str(&fs::read_to_string(fixture_path).unwrap()).unwrap()
     }
 
     fn parse_tool_payload(result: CallToolResult) -> Value {

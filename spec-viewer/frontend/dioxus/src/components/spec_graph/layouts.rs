@@ -1,20 +1,10 @@
 use std::collections::HashMap;
 
-use viewer_api_dioxus::{
-    Camera,
-    EdgeRef3D,
-    Layout3D,
-};
+use viewer_api_dioxus::{Camera, EdgeRef3D, Layout3D};
 
-use crate::types::{
-    SpecGraphEdge,
-    SpecGraphNode,
-};
+use crate::types::{SpecGraphEdge, SpecGraphNode};
 
-use super::model::{
-    LayoutAlgorithm,
-    LayoutParams,
-};
+use super::model::{LayoutAlgorithm, LayoutParams};
 
 mod force;
 mod rings;
@@ -23,10 +13,7 @@ mod tree;
 
 use force::layout_force;
 use rings::layout_rings;
-use simple::{
-    layout_grid,
-    layout_sphere,
-};
+use simple::{layout_grid, layout_sphere};
 use tree::layout_tree_2d;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -50,8 +37,9 @@ pub fn build_layout(
 
     let positioned = match algo {
         LayoutAlgorithm::RingsByDepth => layout_rings(nodes, edges, params),
-        LayoutAlgorithm::ForceDirected =>
-            layout_force(nodes, edges, params, frustum_context.as_ref()),
+        LayoutAlgorithm::ForceDirected => {
+            layout_force(nodes, edges, params, frustum_context.as_ref())
+        }
         LayoutAlgorithm::Sphere => layout_sphere(nodes, params),
         LayoutAlgorithm::Grid => layout_grid(nodes, params),
         LayoutAlgorithm::Tree2D => layout_tree_2d(nodes, edges, params),

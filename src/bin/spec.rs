@@ -1,12 +1,8 @@
 use clap::error::ErrorKind;
 
 use spec::cli::{
-    CliOutput,
-    error_output,
-    parse_cli_from,
-    render_machine_output,
-    requested_machine_output_format_from_args,
-    run,
+    CliOutput, error_output, parse_cli_from, render_machine_output,
+    requested_machine_output_format_from_args, run,
 };
 
 fn main() {
@@ -28,7 +24,7 @@ fn main() {
             );
             eprintln!("{rendered}");
             std::process::exit(2);
-        },
+        }
     };
 
     match run(cli) {
@@ -40,20 +36,20 @@ fn main() {
                     if exit_code != 0 {
                         std::process::exit(exit_code);
                     }
-                },
+                }
                 Err(err) => {
                     eprintln!("{}", error_output(&err, Some(format)));
                     std::process::exit(1);
-                },
+                }
             }
-        },
+        }
         Ok(CliOutput::Text(text)) => {
             let exit_code = validate_links_exit_code_from_text_payload(&text);
             println!("{text}");
             if exit_code != 0 {
                 std::process::exit(exit_code);
             }
-        },
+        }
         Err(err) => {
             eprintln!(
                 "{}",
@@ -63,7 +59,7 @@ fn main() {
                 )
             );
             std::process::exit(1);
-        },
+        }
     }
 }
 

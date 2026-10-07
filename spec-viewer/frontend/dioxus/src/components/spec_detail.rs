@@ -6,18 +6,12 @@ use dioxus::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use super::{
-    code_ref_list::CodeRefList,
-    health_panel::HealthPanel,
-    spec_markdown_surface::SpecMarkdownSurface,
-    state_badge::StateBadge,
+    code_ref_list::CodeRefList, health_panel::HealthPanel,
+    spec_markdown_surface::SpecMarkdownSurface, state_badge::StateBadge,
 };
 use crate::{
     api,
-    types::{
-        HealthResponse,
-        SectionResponse,
-        SpecFullResponse,
-    },
+    types::{HealthResponse, SectionResponse, SpecFullResponse},
 };
 
 // ── CSS class constants ───────────────────────────────────────────────────────
@@ -76,11 +70,11 @@ pub fn SpecDetail(props: SpecDetailProps) -> Element {
                     cache.insert(id, resp.clone());
                     full.set(Some(resp));
                     full_loading.set(false);
-                },
+                }
                 Err(e) => {
                     full_error.set(Some(e));
                     full_loading.set(false);
-                },
+                }
             }
         });
     }));
@@ -99,10 +93,7 @@ pub fn SpecDetail(props: SpecDetailProps) -> Element {
     let spec_id_health = props.spec_id.clone();
     let active_tab_clone = props.active_tab.clone();
     use_effect(use_reactive!(|spec_id_health, active_tab_clone| {
-        if active_tab_clone == "health"
-            && health.read().is_none()
-            && !*health_loading.read()
-        {
+        if active_tab_clone == "health" && health.read().is_none() && !*health_loading.read() {
             health_loading.set(true);
             health_error.set(None);
             let id = spec_id_health.clone();
@@ -111,11 +102,11 @@ pub fn SpecDetail(props: SpecDetailProps) -> Element {
                     Ok(resp) => {
                         health.set(Some(resp));
                         health_loading.set(false);
-                    },
+                    }
                     Err(e) => {
                         health_error.set(Some(e));
                         health_loading.set(false);
-                    },
+                    }
                 }
             });
         }

@@ -1,8 +1,5 @@
 use spec_api::{
-    default_schema::{
-        SPECIFICATION_SCHEMA_TOML,
-        specification_schema,
-    },
+    default_schema::{SPECIFICATION_SCHEMA_TOML, specification_schema},
     spec_schema_registry,
 };
 
@@ -121,9 +118,10 @@ fn test_specification_schema_required_fields() {
     let schema = specification_schema();
 
     for required_field in &["title", "slug", "type"] {
-        let field = schema.fields.get(*required_field).unwrap_or_else(|| {
-            panic!("field '{}' must be defined in schema", required_field)
-        });
+        let field = schema
+            .fields
+            .get(*required_field)
+            .unwrap_or_else(|| panic!("field '{}' must be defined in schema", required_field));
         assert!(
             field.required,
             "field '{}' must be marked required",
@@ -172,6 +170,9 @@ fn v2_fields_are_declared_and_explicitly_versioned() {
         "evidence",
         "outward_contract_edges",
     ] {
-        assert!(schema.fields.contains_key(field), "missing v2 field {field}");
+        assert!(
+            schema.fields.contains_key(field),
+            "missing v2 field {field}"
+        );
     }
 }

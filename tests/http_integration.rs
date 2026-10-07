@@ -4,16 +4,8 @@
 //! — no TCP socket needed.
 
 use axum::{
-    body::{
-        Body,
-        to_bytes,
-    },
-    http::{
-        Method,
-        Request,
-        StatusCode,
-        header,
-    },
+    body::{Body, to_bytes},
+    http::{Method, Request, StatusCode, header},
 };
 use spec_api::SpecStore;
 use tower::ServiceExt;
@@ -23,10 +15,7 @@ mod sections;
 #[path = "http_integration/support.rs"]
 mod support;
 
-use support::{
-    make_app,
-    seed_spec,
-};
+use support::{make_app, seed_spec};
 // ── healthz ──────────────────────────────────────────────────────────────────
 
 #[tokio::test]

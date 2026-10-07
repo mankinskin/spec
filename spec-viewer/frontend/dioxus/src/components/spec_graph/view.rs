@@ -28,11 +28,7 @@ pub(super) fn node_summary(node: &SpecGraphNode) -> String {
         .unwrap_or_else(|| "No body summary yet.".to_string())
 }
 
-pub(super) fn metric_text(
-    count: usize,
-    singular: &str,
-    plural: &str,
-) -> String {
+pub(super) fn metric_text(count: usize, singular: &str, plural: &str) -> String {
     let noun = if count == 1 { singular } else { plural };
     format!("{count} {noun}")
 }

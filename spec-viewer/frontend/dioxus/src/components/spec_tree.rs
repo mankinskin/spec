@@ -10,13 +10,7 @@ use std::collections::BTreeMap;
 
 use dioxus::prelude::*;
 use viewer_api_dioxus::{
-    ExplorerShell,
-    FileTree,
-    FilterDef,
-    NodeIcon,
-    SidebarSearch,
-    SortKey,
-    TreeNode,
+    ExplorerShell, FileTree, FilterDef, NodeIcon, SidebarSearch, SortKey, TreeNode,
 };
 
 use crate::types::SpecSummary;
@@ -46,13 +40,9 @@ pub struct SpecTreeProps {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const ALL_STATES: &[&str] =
-    &["draft", "ready", "reviewed", "approved", "archived"];
+const ALL_STATES: &[&str] = &["draft", "ready", "reviewed", "approved", "archived"];
 
-fn count_state(
-    specs: &[SpecSummary],
-    state: &str,
-) -> usize {
+fn count_state(specs: &[SpecSummary], state: &str) -> usize {
     specs
         .iter()
         .filter(|s| s.state.as_deref() == Some(state))
@@ -150,9 +140,7 @@ fn build_nodes(specs: &[SpecSummary]) -> Vec<TreeNode> {
     // Build folder nodes sorted by component name.
     let mut nodes: Vec<TreeNode> = folders
         .into_iter()
-        .map(|(comp, children)| {
-            TreeNode::dir(format!("__folder__{comp}"), comp, children)
-        })
+        .map(|(comp, children)| TreeNode::dir(format!("__folder__{comp}"), comp, children))
         .collect();
 
     // Append root-level specs after folders.
@@ -193,8 +181,7 @@ pub fn SpecTree(props: SpecTreeProps) -> Element {
         .specs
         .iter()
         .filter(|s| {
-            props.state_filter.is_empty()
-                || s.state.as_deref() == Some(props.state_filter.as_str())
+            props.state_filter.is_empty() || s.state.as_deref() == Some(props.state_filter.as_str())
         })
         .collect();
 

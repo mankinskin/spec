@@ -4,27 +4,18 @@
 //! sections → tree → health → refs_validate → delete) via `SpecServer`
 //! methods directly, without going through the JSON-RPC transport.
 
-use std::{
-    collections::BTreeMap,
-    process::Command,
-};
+use std::{collections::BTreeMap, process::Command};
 
 use rmcp::handler::server::wrapper::Parameters;
-use spec_api::{SpecManifest, SpecStore};
 use spec::mcp::server::*;
+use spec_api::{SpecManifest, SpecStore};
 
 #[path = "mcp_smoke/support.rs"]
 mod support;
 
-use support::{
-    extract_json,
-    make_sandbox,
-};
+use support::{extract_json, make_sandbox};
 
-fn run_git(
-    repo_root: &std::path::Path,
-    args: &[&str],
-) {
+fn run_git(repo_root: &std::path::Path, args: &[&str]) {
     let status = Command::new("git")
         .current_dir(repo_root)
         .args(args)
@@ -82,12 +73,21 @@ async fn explicit_dot_workspace_creates_and_reads_back_in_current_workspace() {
     let result = extract_json(result);
     let id = result["id"].as_str().unwrap();
     let store_root = memory_kernel::workspace::canonical_store_root(&selected, ".spec");
-    assert!(store_root.join("specs").join(id).join("spec.toml").is_file());
+    assert!(
+        store_root
+            .join("specs")
+            .join(id)
+            .join("spec.toml")
+            .is_file()
+    );
     let store = SpecStore::open_or_init(&store_root).unwrap();
     let (manifest, body) = store.get_full(id).unwrap();
     assert_eq!(manifest.title(), Some("Dot selector read-back"));
     assert_eq!(body, "# Selected workspace\n");
-    assert_eq!(result["scope"]["requested_workspace"], selected.to_string_lossy().as_ref());
+    assert_eq!(
+        result["scope"]["requested_workspace"],
+        selected.to_string_lossy().as_ref()
+    );
     assert!(!sibling.join(".workflow-tools").exists());
 }
 
@@ -156,10 +156,8 @@ async fn explicit_child_workspace_does_not_use_parent_spec_store() {
     std::fs::create_dir_all(&child).expect("create child workspace");
     let server = SpecServer::new(parent.clone());
 
-    let parent_store_root =
-        memory_kernel::workspace::canonical_store_root(&parent, ".spec");
-    let mut parent_store =
-        SpecStore::open_or_init(&parent_store_root).expect("open parent store");
+    let parent_store_root = memory_kernel::workspace::canonical_store_root(&parent, ".spec");
+    let mut parent_store = SpecStore::open_or_init(&parent_store_root).expect("open parent store");
     let first_id = parent_store
         .create(
             &SpecManifest::new("parent/only-spec", "Parent Spec", "parent"),
@@ -182,10 +180,7 @@ async fn explicit_child_workspace_does_not_use_parent_spec_store() {
         .join("spec.toml");
     let second_manifest =
         std::fs::read_to_string(&second_manifest_path).expect("read second manifest");
-    let duplicate_manifest = second_manifest.replace(
-        "parent/second-spec",
-        "parent/only-spec",
-    );
+    let duplicate_manifest = second_manifest.replace("parent/second-spec", "parent/only-spec");
     assert_ne!(second_manifest, duplicate_manifest);
     std::fs::write(&second_manifest_path, duplicate_manifest)
         .expect("write duplicate slug manifest");
@@ -201,7 +196,12 @@ async fn explicit_child_workspace_does_not_use_parent_spec_store() {
     let listed = extract_json(listed);
 
     assert_eq!(listed["count"], 0);
-    assert!(parent_store_root.join("specs").join(first_id.to_string()).is_dir());
+    assert!(
+        parent_store_root
+            .join("specs")
+            .join(first_id.to_string())
+            .is_dir()
+    );
     assert!(child.join(".workflow-tools/spec/entities.db").is_file());
     assert_eq!(
         listed["scope"]["requested_workspace"],
@@ -255,10 +255,7 @@ async fn spec_health_errors_include_workspace_resolution_context() {
 async fn explicit_spec_store_path_remains_an_override() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let workspace = tmp.path().join("workspace");
-    let store_root = memory_kernel::workspace::canonical_store_root(
-        &workspace,
-        ".spec",
-    );
+    let store_root = memory_kernel::workspace::canonical_store_root(&workspace, ".spec");
     let mut store = SpecStore::open_or_init(&store_root).expect("open store");
     store
         .create(
@@ -281,10 +278,7 @@ async fn explicit_spec_store_path_remains_an_override() {
     let listed = extract_json(listed);
 
     assert_eq!(listed["count"], 1);
-    assert_eq!(
-        listed["scope"]["selection_reason"],
-        "explicit_store_path"
-    );
+    assert_eq!(listed["scope"]["selection_reason"], "explicit_store_path");
     assert_eq!(
         listed["scope"]["active_index_root"],
         store_root.to_string_lossy().replace('\\', "/")
@@ -295,10 +289,8 @@ async fn explicit_spec_store_path_remains_an_override() {
 async fn invalid_workspace_error_names_expected_store_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let requested_workspace = tmp.path().join("missing-workspace");
-    let expected_store = memory_kernel::workspace::canonical_store_root(
-        &requested_workspace,
-        ".spec",
-    );
+    let expected_store =
+        memory_kernel::workspace::canonical_store_root(&requested_workspace, ".spec");
     let server = SpecServer::new(tmp.path().to_path_buf());
 
     let error = server
@@ -863,5 +855,4 @@ async fn spec_workspace_validation_error() {
         err_msg.contains("invalid workspace selector"),
         "error should mention 'invalid workspace selector': {err_msg}"
     );
-
 }

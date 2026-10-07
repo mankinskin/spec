@@ -4,10 +4,7 @@ use crate::types::SpecGraphNode;
 
 use super::super::model::LayoutParams;
 
-pub(super) fn layout_sphere(
-    nodes: &[SpecGraphNode],
-    params: LayoutParams,
-) -> Vec<Node3D> {
+pub(super) fn layout_sphere(nodes: &[SpecGraphNode], params: LayoutParams) -> Vec<Node3D> {
     let node_count = nodes.len() as f32;
     let radius = (node_count.sqrt() * 0.9 + 4.0) * params.spread;
     let golden = std::f32::consts::PI * (1.0 + 5.0_f32.sqrt());
@@ -31,10 +28,7 @@ pub(super) fn layout_sphere(
         .collect()
 }
 
-pub(super) fn layout_grid(
-    nodes: &[SpecGraphNode],
-    params: LayoutParams,
-) -> Vec<Node3D> {
+pub(super) fn layout_grid(nodes: &[SpecGraphNode], params: LayoutParams) -> Vec<Node3D> {
     let node_count = nodes.len();
     let columns = (node_count as f32).sqrt().ceil() as usize;
     let columns = columns.max(1);

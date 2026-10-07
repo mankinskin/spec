@@ -1,12 +1,6 @@
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::path::{Path, PathBuf};
 
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 use spec_api::SpecStore;
 use ticket_api::storage::TicketStore;
 use uuid::Uuid;
@@ -18,10 +12,7 @@ use ticket_api::model::ticket::TicketManifestExt;
 /// Resolve a `TicketRef.store_root` (repo-root-relative, e.g.
 /// ".workflow-tools/ticket" or "memory-api/.workflow-tools/ticket") against the workspace root that `spec validate-links`
 /// was invoked against.
-fn resolve_referenced_root(
-    workspace_root: &Path,
-    store_root: &str,
-) -> PathBuf {
+fn resolve_referenced_root(workspace_root: &Path, store_root: &str) -> PathBuf {
     let candidate = Path::new(store_root);
     if candidate.is_absolute() {
         candidate.to_path_buf()
@@ -59,12 +50,9 @@ pub(crate) fn cmd_validate_links(
 
         for ticket_ref in spec.related_tickets() {
             checked += 1;
-            let referenced_root =
-                resolve_referenced_root(workspace_root, &ticket_ref.store_root);
+            let referenced_root = resolve_referenced_root(workspace_root, &ticket_ref.store_root);
 
-            if let Some(ticket) =
-                try_get_ticket(&referenced_root, ticket_ref.ticket_id)
-            {
+            if let Some(ticket) = try_get_ticket(&referenced_root, ticket_ref.ticket_id) {
                 let has_back_ref = ticket
                     .related_specs()
                     .iter()
@@ -90,8 +78,7 @@ pub(crate) fn cmd_validate_links(
             // instead — this is the structural nested-store regression:
             // the id is real, just not where the reference claims.
             if referenced_root != canonical_ticket_root
-                && try_get_ticket(&canonical_ticket_root, ticket_ref.ticket_id)
-                    .is_some()
+                && try_get_ticket(&canonical_ticket_root, ticket_ref.ticket_id).is_some()
             {
                 findings.push(json!({
                     "kind": "wrong_store_ref",
@@ -152,20 +139,11 @@ fn count_by_kind(findings: &[Value]) -> Value {
 
 #[cfg(test)]
 mod tests {
-    use spec_api::{
-        SpecManifest,
-        TicketRef,
-    };
+    use spec_api::{SpecManifest, TicketRef};
     use tempfile::TempDir;
-    use ticket_api::{
-        model::ticket::SpecRef,
-        storage::TicketStore,
-    };
+    use ticket_api::{model::ticket::SpecRef, storage::TicketStore};
 
-    use super::{
-        SpecStore,
-        cmd_validate_links,
-    };
+    use super::{SpecStore, cmd_validate_links};
 
     /// Reproduces the nested-store bug from the spec side: a spec's
     /// `related_tickets` entry carries a `store_root` that does not resolve
@@ -178,10 +156,8 @@ mod tests {
         let workspace = TempDir::new().unwrap();
         let workspace_root = workspace.path();
 
-        let ticket_store =
-            TicketStore::init(&workspace_root).unwrap();
-        let mut spec_store =
-            SpecStore::init(&workspace_root).unwrap();
+        let ticket_store = TicketStore::init(&workspace_root).unwrap();
+        let mut spec_store = SpecStore::init(&workspace_root).unwrap();
 
         let ticket_id = ticket_store
             .create(
@@ -225,8 +201,7 @@ mod tests {
         let workspace_root = workspace.path();
 
         TicketStore::init(&workspace_root).unwrap();
-        let mut spec_store =
-            SpecStore::init(&workspace_root).unwrap();
+        let mut spec_store = SpecStore::init(&workspace_root).unwrap();
 
         let mut spec_manifest = SpecManifest::new(
             "traceability/dangling-ticket-ref",
@@ -253,10 +228,8 @@ mod tests {
         let workspace = TempDir::new().unwrap();
         let workspace_root = workspace.path();
 
-        let ticket_store =
-            TicketStore::init(&workspace_root).unwrap();
-        let mut spec_store =
-            SpecStore::init(&workspace_root).unwrap();
+        let ticket_store = TicketStore::init(&workspace_root).unwrap();
+        let mut spec_store = SpecStore::init(&workspace_root).unwrap();
 
         let mut spec_manifest = SpecManifest::new(
             "traceability/consistent-link-spec-side",

@@ -1,33 +1,17 @@
 //! Graph view: all specs as nodes, parent->child + shared-code-ref edges.
 
-use std::collections::{
-    BTreeMap,
-    BTreeSet,
-};
+use std::collections::{BTreeMap, BTreeSet};
 
 use axum::{
-    extract::{
-        Extension,
-        State,
-    },
-    response::{
-        IntoResponse,
-        Json,
-        Response,
-    },
+    extract::{Extension, State},
+    response::{IntoResponse, Json, Response},
 };
 use serde::Serialize;
-use spec_api::{
-    SpecManifest,
-    SpecStore,
-};
+use spec_api::{SpecManifest, SpecStore};
 
 use viewer_api::error::RequestIdExt;
 
-use crate::http::{
-    error::storage_err,
-    state::SpecAppState,
-};
+use crate::http::{error::storage_err, state::SpecAppState};
 
 #[derive(Serialize)]
 pub struct GraphNodeMetrics {
@@ -89,10 +73,7 @@ pub async fn get_graph(
     .into_response()
 }
 
-fn load_specs(
-    store: &mut SpecStore,
-    request_id: &str,
-) -> Result<Vec<SpecManifest>, Response> {
+fn load_specs(store: &mut SpecStore, request_id: &str) -> Result<Vec<SpecManifest>, Response> {
     let all = match store.entity_store().list_indexed() {
         Ok(all) => all,
         Err(err) => return Err(storage_err(err, request_id)),
@@ -108,10 +89,7 @@ fn load_specs(
     Ok(specs)
 }
 
-fn build_nodes(
-    store: &mut SpecStore,
-    specs: &[SpecManifest],
-) -> Vec<GraphNode> {
+fn build_nodes(store: &mut SpecStore, specs: &[SpecManifest]) -> Vec<GraphNode> {
     let child_counts = count_children(specs);
 
     specs
@@ -125,9 +103,7 @@ fn build_nodes(
             let (summary, summary_markdown) = store
                 .get_full(&id)
                 .ok()
-                .map(|(_, body)| {
-                    (summarize_body(&body), summarize_body_markdown(&body))
-                })
+                .map(|(_, body)| (summarize_body(&body), summarize_body_markdown(&body)))
                 .unwrap_or((None, None));
 
             GraphNode {
@@ -212,21 +188,14 @@ fn summarize_body_markdown(body: &str) -> Option<String> {
     Some(lines.join("\n"))
 }
 
-fn build_edges(
-    specs: &[SpecManifest],
-    nodes: &[GraphNode],
-) -> Vec<GraphEdge> {
-    let known: BTreeSet<String> =
-        nodes.iter().map(|node| node.id.clone()).collect();
+fn build_edges(specs: &[SpecManifest], nodes: &[GraphNode]) -> Vec<GraphEdge> {
+    let known: BTreeSet<String> = nodes.iter().map(|node| node.id.clone()).collect();
     let mut edges = parent_edges(specs, &known);
     edges.extend(code_ref_edges(specs));
     edges
 }
 
-fn parent_edges(
-    specs: &[SpecManifest],
-    known: &BTreeSet<String>,
-) -> Vec<GraphEdge> {
+fn parent_edges(specs: &[SpecManifest], known: &BTreeSet<String>) -> Vec<GraphEdge> {
     let mut edges = Vec::new();
     for spec in specs {
         let Some(parent_id) = spec.parent() else {
@@ -245,8 +214,7 @@ fn parent_edges(
 
 fn code_ref_edges(specs: &[SpecManifest]) -> Vec<GraphEdge> {
     let mut by_file: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
-    let id_strings: Vec<String> =
-        specs.iter().map(|spec| spec.id.to_string()).collect();
+    let id_strings: Vec<String> = specs.iter().map(|spec| spec.id.to_string()).collect();
 
     for (index, spec) in specs.iter().enumerate() {
         for code_ref in &spec.code_refs {
@@ -319,8 +287,7 @@ mod tests {
             "Second paragraph."
         );
 
-        let summary =
-            summarize_body_markdown(body).expect("summary should exist");
+        let summary = summarize_body_markdown(body).expect("summary should exist");
 
         assert!(summary.contains("*emphasis*"));
         assert!(summary.contains("[links](https://example.test)"));

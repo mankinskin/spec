@@ -10,8 +10,7 @@ pub(super) fn normalize_summary(body: &str) -> String {
         if stripped.is_empty() {
             continue;
         }
-        let collapsed =
-            stripped.split_whitespace().collect::<Vec<_>>().join(" ");
+        let collapsed = stripped.split_whitespace().collect::<Vec<_>>().join(" ");
         return truncate_chars(&collapsed, 200);
     }
     String::new()
@@ -20,10 +19,7 @@ pub(super) fn normalize_summary(body: &str) -> String {
 /// Extract the body text under a `## <heading>` (or `# <heading>`) section,
 /// normalized to a single line. Returns `None` when the heading is absent or
 /// the section is empty.
-pub(super) fn extract_section(
-    body: &str,
-    heading: &str,
-) -> Option<String> {
+pub(super) fn extract_section(body: &str, heading: &str) -> Option<String> {
     let mut lines = body.lines();
     // Find the heading line (any level).
     let target = heading.to_lowercase();
@@ -65,10 +61,7 @@ pub(super) fn extract_section(
     Some(truncate_chars(&collapsed, 280))
 }
 
-pub(super) fn truncate_chars(
-    text: &str,
-    max: usize,
-) -> String {
+pub(super) fn truncate_chars(text: &str, max: usize) -> String {
     if text.chars().count() <= max {
         return text.to_string();
     }
@@ -78,10 +71,7 @@ pub(super) fn truncate_chars(
 }
 
 /// Extract lower-cased keyword terms from the title and slug leaf.
-pub(super) fn keywords_for(
-    title: &str,
-    slug: &str,
-) -> Vec<String> {
+pub(super) fn keywords_for(title: &str, slug: &str) -> Vec<String> {
     let slug_leaf = slug.rsplit('/').next().unwrap_or(slug);
     let mut keywords: Vec<String> = title
         .split_whitespace()
@@ -125,8 +115,7 @@ pub(super) fn render_catalog_markdown(
     tree_paths: &HashMap<Uuid, String>,
     extras: &BTreeMap<Uuid, SpecDisplayExtra>,
 ) -> String {
-    let by_id: HashMap<Uuid, &IndexEntry> =
-        sidecar.entries.iter().map(|e| (e.id, e)).collect();
+    let by_id: HashMap<Uuid, &IndexEntry> = sidecar.entries.iter().map(|e| (e.id, e)).collect();
     let children_by_parent = children_from_sidecar(sidecar, extras);
     let roots_by_group = roots_by_group(sidecar, extras);
 
@@ -171,9 +160,10 @@ pub(super) fn render_readme_tree_lines(
             .map(|e| e.slug.clone())
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| entry.title.clone());
-        let path = tree_paths.get(id).cloned().unwrap_or_else(|| {
-            format!(".spec/{SPEC_INDEX_TREE_DIR}/README.md")
-        });
+        let path = tree_paths
+            .get(id)
+            .cloned()
+            .unwrap_or_else(|| format!(".spec/{SPEC_INDEX_TREE_DIR}/README.md"));
         let rel = rel_from_readme(&path);
         out.push_str(&format!("{}- [{}]({})\n", "  ".repeat(depth), slug, rel));
 
@@ -208,8 +198,7 @@ pub(super) fn build_tree_paths(
     store_dir: &str,
 ) -> HashMap<Uuid, String> {
     let children_by_parent = children_from_sidecar(sidecar, extras);
-    let by_id: HashMap<Uuid, &IndexEntry> =
-        sidecar.entries.iter().map(|e| (e.id, e)).collect();
+    let by_id: HashMap<Uuid, &IndexEntry> = sidecar.entries.iter().map(|e| (e.id, e)).collect();
 
     let mut roots: Vec<Uuid> = sidecar
         .entries
@@ -340,10 +329,7 @@ pub(super) fn sanitize_path_segment(raw: &str) -> String {
     out.trim_matches('-').to_string()
 }
 
-pub(super) fn join_slash(
-    base: &str,
-    next: &str,
-) -> String {
+pub(super) fn join_slash(base: &str, next: &str) -> String {
     let base = base.trim_end_matches('/');
     let next = next.trim_start_matches('/');
     if base.is_empty() {
@@ -413,8 +399,7 @@ pub(super) fn render_tree_markdown(
     tree_paths: &HashMap<Uuid, String>,
     extras: &BTreeMap<Uuid, SpecDisplayExtra>,
 ) -> BTreeMap<String, String> {
-    let by_id: HashMap<Uuid, &IndexEntry> =
-        sidecar.entries.iter().map(|e| (e.id, e)).collect();
+    let by_id: HashMap<Uuid, &IndexEntry> = sidecar.entries.iter().map(|e| (e.id, e)).collect();
     let children_by_parent = children_from_sidecar(sidecar, extras);
 
     let mut files = BTreeMap::new();
@@ -422,14 +407,8 @@ pub(super) fn render_tree_markdown(
         let Some(path) = tree_paths.get(&entry.id) else {
             continue;
         };
-        let content = render_tree_entry_page(
-            entry,
-            path,
-            &by_id,
-            &children_by_parent,
-            tree_paths,
-            extras,
-        );
+        let content =
+            render_tree_entry_page(entry, path, &by_id, &children_by_parent, tree_paths, extras);
         files.insert(path.clone(), content);
     }
     files
@@ -448,8 +427,7 @@ pub(super) fn render_tree_entry_page(
         .map(|p| p.to_string_lossy().replace('\\', "/"))
         .unwrap_or_default();
 
-    let parent_and_siblings =
-        tree_parent_and_siblings(entry, by_id, children_by_parent);
+    let parent_and_siblings = tree_parent_and_siblings(entry, by_id, children_by_parent);
 
     let mut out = String::new();
     render_tree_entry_front_matter(&mut out, entry, extras);
@@ -582,10 +560,7 @@ pub(super) fn render_tree_navigation(
             sibling_lines.push(format!("[{label}]({rel})"));
         }
         if !sibling_lines.is_empty() {
-            out.push_str(&format!(
-                "- Siblings: {}\n",
-                sibling_lines.join(", ")
-            ));
+            out.push_str(&format!("- Siblings: {}\n", sibling_lines.join(", ")));
         }
     } else {
         out.push_str("- Parent: _(root)_\n");
@@ -615,14 +590,9 @@ pub(super) fn render_tree_navigation(
     }
 }
 
-pub(super) fn relative_link(
-    from_dir: &str,
-    to_path: &str,
-) -> String {
-    let from_parts: Vec<&str> =
-        from_dir.split('/').filter(|s| !s.is_empty()).collect();
-    let to_parts: Vec<&str> =
-        to_path.split('/').filter(|s| !s.is_empty()).collect();
+pub(super) fn relative_link(from_dir: &str, to_path: &str) -> String {
+    let from_parts: Vec<&str> = from_dir.split('/').filter(|s| !s.is_empty()).collect();
+    let to_parts: Vec<&str> = to_path.split('/').filter(|s| !s.is_empty()).collect();
 
     let mut common = 0usize;
     while common < from_parts.len()

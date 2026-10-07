@@ -1,22 +1,12 @@
-use std::{
-    collections::BTreeMap,
-    fs,
-};
+use std::{collections::BTreeMap, fs};
 
 use tempfile::tempdir;
 
 use super::*;
-use crate::cli::{
-    SearchArgs,
-    commands::cmd_search,
-};
-use spec_api::{
-    SpecManifest,
-    store::GeneratedSpecArtifacts,
-};
+use crate::cli::{SearchArgs, commands::cmd_search};
+use spec_api::{SpecManifest, store::GeneratedSpecArtifacts};
 
-fn create_sync_fixture()
--> (tempfile::TempDir, PathBuf, PathBuf, SpecStore, String) {
+fn create_sync_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, SpecStore, String) {
     let dir = tempdir().unwrap();
     let repo_root = dir.path().join("repo");
     let child_root = repo_root.join("memory-api");
@@ -70,11 +60,7 @@ fn create_sync_fixture()
     .unwrap();
 
     let mut spec_store = SpecStore::init(&child_root).unwrap();
-    let spec = SpecManifest::new(
-        "spec-cli/generated-sync",
-        "Generated Sync",
-        "spec-cli",
-    );
+    let spec = SpecManifest::new("spec-cli/generated-sync", "Generated Sync", "spec-cli");
     let id = spec_store.create(&spec, "placeholder body", None).unwrap();
 
     let mut sections = BTreeMap::new();
@@ -106,12 +92,8 @@ fn create_sync_fixture()
 fn sync_generated_uses_owning_workspace_and_updates_searchable_body() {
     let (_dir, repo_root, child_root, mut store, id) = create_sync_fixture();
 
-    let payload = cmd_sync_generated(
-        SyncGeneratedArgs { id: id.clone() },
-        &mut store,
-        &repo_root,
-    )
-    .unwrap();
+    let payload =
+        cmd_sync_generated(SyncGeneratedArgs { id: id.clone() }, &mut store, &repo_root).unwrap();
 
     assert_eq!(payload["command"], "sync_generated");
     assert_eq!(payload["status"], "ok");
@@ -166,9 +148,7 @@ fn sync_generated_fails_when_declared_target_is_missing() {
         )
         .unwrap();
 
-    let error =
-        cmd_sync_generated(SyncGeneratedArgs { id }, &mut store, &repo_root)
-            .unwrap_err();
+    let error = cmd_sync_generated(SyncGeneratedArgs { id }, &mut store, &repo_root).unwrap_err();
 
     assert!(error.to_string().contains("missing-target"));
 }

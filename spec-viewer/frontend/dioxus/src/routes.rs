@@ -15,11 +15,7 @@ mod list;
 mod tree;
 
 use dioxus::prelude::*;
-use percent_encoding::{
-    utf8_percent_encode,
-    AsciiSet,
-    CONTROLS,
-};
+use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 
 pub use detail::SpecDetailPage;
 pub use graph::SpecGraphPage;
@@ -58,10 +54,7 @@ pub fn is_canonical_spec_detail_view(view: Option<&str>) -> bool {
     )
 }
 
-pub fn is_spec_detail_view_available(
-    _spec_id: &str,
-    view: &str,
-) -> bool {
+pub fn is_spec_detail_view_available(_spec_id: &str, view: &str) -> bool {
     matches!(
         canonical_spec_view(Some(view)),
         "body" | "sections" | "coderefs" | "health"
@@ -86,10 +79,7 @@ pub enum Route {
 
 impl Route {
     #[allow(dead_code)]
-    pub fn spec_detail(
-        id: impl Into<String>,
-        view: Option<&str>,
-    ) -> Self {
+    pub fn spec_detail(id: impl Into<String>, view: Option<&str>) -> Self {
         let id = id.into();
         match canonical_spec_view(view) {
             DEFAULT_SPEC_VIEW => Self::SpecDetailPage { id, view: None },
@@ -100,10 +90,7 @@ impl Route {
         }
     }
 
-    pub fn spec_detail_path(
-        id: &str,
-        view: Option<&str>,
-    ) -> String {
+    pub fn spec_detail_path(id: &str, view: Option<&str>) -> String {
         let id = utf8_percent_encode(id, SPEC_ID_PATH_ENCODE_SET).to_string();
         match canonical_spec_view(view) {
             DEFAULT_SPEC_VIEW => format!("/specs/{id}"),

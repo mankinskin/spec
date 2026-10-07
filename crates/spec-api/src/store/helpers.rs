@@ -1,17 +1,8 @@
-use std::{
-    fs,
-    path::Path,
-};
+use std::{fs, path::Path};
 
-use memory_kernel::{
-    error::StorageError,
-    model::entity::EntityManifest,
-};
+use memory_kernel::{error::StorageError, model::entity::EntityManifest};
 
-use crate::{
-    error::SpecError,
-    manifest::SpecManifest,
-};
+use crate::{error::SpecError, manifest::SpecManifest};
 
 pub(super) fn spec_to_entity(spec: &SpecManifest) -> EntityManifest {
     let mut extra = spec.extra.clone();
@@ -41,14 +32,11 @@ pub(super) fn entity_to_spec(entity: &EntityManifest) -> SpecManifest {
     }
 }
 
-pub(super) fn read_spec_manifest(
-    spec_path: &Path
-) -> Result<SpecManifest, SpecError> {
+pub(super) fn read_spec_manifest(spec_path: &Path) -> Result<SpecManifest, SpecError> {
     let manifest_path = spec_path.join(super::SPEC_MANIFEST_FILE);
     let content = fs::read_to_string(&manifest_path)
         .map_err(|error| SpecError::Storage(StorageError::Io(error)))?;
-    toml::from_str(&content)
-        .map_err(|error| SpecError::Serialization(error.to_string()))
+    toml::from_str(&content).map_err(|error| SpecError::Serialization(error.to_string()))
 }
 
 pub(super) fn normalize_section_name(name: &str) -> String {
@@ -64,28 +52,18 @@ pub(super) fn read_body(spec_path: &Path) -> String {
     read_markdown_file(&body_path)
 }
 
-pub(super) fn write_body(
-    spec_path: &Path,
-    content: &str,
-) -> Result<(), SpecError> {
+pub(super) fn write_body(spec_path: &Path, content: &str) -> Result<(), SpecError> {
     let body_path = spec_path.join("body.md");
     write_markdown_file(&body_path, content)
 }
 
-pub(super) fn read_section(
-    spec_path: &Path,
-    name: &str,
-) -> String {
+pub(super) fn read_section(spec_path: &Path, name: &str) -> String {
     let file_name = normalize_section_name(name);
     let path = spec_path.join("sections").join(file_name);
     read_markdown_file(&path)
 }
 
-pub(super) fn write_section(
-    spec_path: &Path,
-    name: &str,
-    content: &str,
-) -> Result<(), SpecError> {
+pub(super) fn write_section(spec_path: &Path, name: &str, content: &str) -> Result<(), SpecError> {
     let file_name = normalize_section_name(name);
     let sections_dir = spec_path.join("sections");
     fs::create_dir_all(&sections_dir)
@@ -98,10 +76,6 @@ fn read_markdown_file(path: &Path) -> String {
     fs::read_to_string(path).unwrap_or_default()
 }
 
-fn write_markdown_file(
-    path: &Path,
-    content: &str,
-) -> Result<(), SpecError> {
-    fs::write(path, content)
-        .map_err(|error| SpecError::Storage(StorageError::Io(error)))
+fn write_markdown_file(path: &Path, content: &str) -> Result<(), SpecError> {
+    fs::write(path, content).map_err(|error| SpecError::Storage(StorageError::Io(error)))
 }

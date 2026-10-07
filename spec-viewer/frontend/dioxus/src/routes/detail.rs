@@ -1,37 +1,22 @@
 use dioxus::prelude::*;
 use viewer_api_dioxus::{
-    BreadcrumbItem,
-    Breadcrumbs,
-    HamburgerIcon,
-    Layout,
-    Overlay,
-    PageHeader,
-    ThemeSettings,
+    BreadcrumbItem, Breadcrumbs, HamburgerIcon, Layout, Overlay, PageHeader, ThemeSettings,
 };
 
 use crate::{
-    components::spec_detail::SpecDetail,
-    sse::use_sse,
-    store::SpecListStore,
-    types::SpecSummary,
+    components::spec_detail::SpecDetail, sse::use_sse, store::SpecListStore, types::SpecSummary,
 };
 
 use super::{
     list::{
-        persist_store,
-        render_spec_list_sidebar,
-        sidebar_button_state,
-        toggle_sidebar,
+        persist_store, render_spec_list_sidebar, sidebar_button_state, toggle_sidebar,
         use_spec_list,
     },
     Route,
 };
 
 #[component]
-pub fn SpecDetailPage(
-    id: String,
-    view: Option<String>,
-) -> Element {
+pub fn SpecDetailPage(id: String, view: Option<String>) -> Element {
     let store = SpecListStore::use_store();
     let sidebar_collapsed = use_signal(|| false);
     let mobile_sidebar_open = use_signal(|| false);
@@ -90,10 +75,7 @@ pub fn SpecDetailPage(
     let active_tab_for_view_memory = active_tab.clone();
     use_effect(use_reactive!(
         |id_for_view_memory, active_tab_for_view_memory| {
-            navigation_store.remember_spec_view(
-                &id_for_view_memory,
-                &active_tab_for_view_memory,
-            );
+            navigation_store.remember_spec_view(&id_for_view_memory, &active_tab_for_view_memory);
         }
     ));
 

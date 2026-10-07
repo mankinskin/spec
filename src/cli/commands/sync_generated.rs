@@ -1,33 +1,17 @@
 use std::{
     collections::BTreeSet,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
 };
 
 use memory_kernel::generated_markdown::GeneratedMarkdownSnippet;
 use rule_api::{
-    RuleManifest,
-    RuleStore,
-    collect_target_rules,
-    discover_workspace_scan_roots,
-    load_render_target_config,
-    render_target_by_name,
+    RuleManifest, RuleStore, collect_target_rules, discover_workspace_scan_roots,
+    load_render_target_config, render_target_by_name,
 };
-use serde_json::{
-    Value,
-    json,
-};
-use spec_api::{
-    SpecStore,
-    store::GeneratedSpecArtifactTarget,
-};
+use serde_json::{Value, json};
+use spec_api::{SpecStore, store::GeneratedSpecArtifactTarget};
 
-use crate::cli::{
-    CliRunError,
-    SyncGeneratedArgs,
-};
+use crate::cli::{CliRunError, SyncGeneratedArgs};
 
 pub(crate) fn cmd_sync_generated(
     args: SyncGeneratedArgs,
@@ -35,25 +19,19 @@ pub(crate) fn cmd_sync_generated(
     default_workspace_root: &Path,
 ) -> Result<Value, CliRunError> {
     let spec = store.get(&args.id)?;
-    let workspace_root = inferred_workspace_root_for_spec(
-        store,
-        spec.id,
-        default_workspace_root,
-    );
-    let artifacts =
-        store.get_generated_artifacts(&args.id)?.ok_or_else(|| {
-            CliRunError::BadRequest(format!(
-                "spec '{}' does not declare generated artifacts",
-                args.id
-            ))
-        })?;
+    let workspace_root = inferred_workspace_root_for_spec(store, spec.id, default_workspace_root);
+    let artifacts = store.get_generated_artifacts(&args.id)?.ok_or_else(|| {
+        CliRunError::BadRequest(format!(
+            "spec '{}' does not declare generated artifacts",
+            args.id
+        ))
+    })?;
     let rule_store = open_rule_store(&workspace_root)?;
 
     let mut generated = Vec::new();
 
     if let Some(target) = artifacts.body.as_ref() {
-        let rules =
-            collect_rules_for_target(&rule_store, &workspace_root, target)?;
+        let rules = collect_rules_for_target(&rule_store, &workspace_root, target)?;
         let snippets = rules_as_snippets(&rules);
         store.update_generated_body(&args.id, &snippets)?;
         generated.push(json!({
@@ -65,8 +43,7 @@ pub(crate) fn cmd_sync_generated(
     }
 
     for (name, target) in &artifacts.sections {
-        let rules =
-            collect_rules_for_target(&rule_store, &workspace_root, target)?;
+        let rules = collect_rules_for_target(&rule_store, &workspace_root, target)?;
         let snippets = rules_as_snippets(&rules);
         store.update_generated_section(&args.id, name, &snippets)?;
         generated.push(json!({
@@ -122,10 +99,7 @@ fn collect_rules_for_target(
     collect_target_rules(store, render_target).map_err(CliRunError::from)
 }
 
-fn resolve_config_path(
-    workspace_root: &Path,
-    config: &str,
-) -> PathBuf {
+fn resolve_config_path(workspace_root: &Path, config: &str) -> PathBuf {
     let config_path = PathBuf::from(config);
     if config_path.is_absolute() {
         config_path
@@ -134,9 +108,7 @@ fn resolve_config_path(
     }
 }
 
-fn rules_as_snippets(
-    rules: &[RuleManifest]
-) -> Vec<GeneratedMarkdownSnippet<'_>> {
+fn rules_as_snippets(rules: &[RuleManifest]) -> Vec<GeneratedMarkdownSnippet<'_>> {
     rules
         .iter()
         .map(|rule| {
@@ -159,19 +131,12 @@ fn inferred_workspace_root_for_spec(
         .get_indexed(&spec_id)
         .ok()
         .flatten()
-        .and_then(|indexed| {
-            workspace_root_for_indexed_spec(store, &indexed.path)
-        })
-        .or_else(|| {
-            workspace_root_from_store_root(&store.entity_store().index_root)
-        })
+        .and_then(|indexed| workspace_root_for_indexed_spec(store, &indexed.path))
+        .or_else(|| workspace_root_from_store_root(&store.entity_store().index_root))
         .unwrap_or_else(|| default_workspace_root.to_path_buf())
 }
 
-fn workspace_root_for_indexed_spec(
-    store: &SpecStore,
-    spec_path: &Path,
-) -> Option<PathBuf> {
+fn workspace_root_for_indexed_spec(store: &SpecStore, spec_path: &Path) -> Option<PathBuf> {
     let scan_root = store
         .entity_store()
         .list_scan_roots()
@@ -193,9 +158,7 @@ fn workspace_root_from_scan_root(scan_root: &Path) -> Option<PathBuf> {
 
 fn workspace_root_from_store_root(store_root: &Path) -> Option<PathBuf> {
     let workspace_root =
-        memory_kernel::workspace::resolve_workspace_root_from_store_root(
-            store_root, ".spec",
-        );
+        memory_kernel::workspace::resolve_workspace_root_from_store_root(store_root, ".spec");
     if workspace_root.as_os_str().is_empty() {
         None
     } else {

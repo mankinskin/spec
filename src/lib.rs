@@ -6,7 +6,4 @@ pub mod http;
 pub mod mcp;
 
 #[cfg(feature = "cli")]
-pub use cli::{
-    BootstrapArgs,
-    commands::cmd_bootstrap,
-};
+pub use cli::{BootstrapArgs, commands::cmd_bootstrap};

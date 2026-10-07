@@ -2,21 +2,14 @@ use std::fs;
 
 use memory_kernel::{
     error::StorageError,
-    generated_markdown::{
-        GeneratedMarkdownSnippet,
-        prepare_generated_output,
-    },
+    generated_markdown::{GeneratedMarkdownSnippet, prepare_generated_output},
 };
 
 use crate::error::SpecError;
 
 use super::{
     SpecStore,
-    helpers::{
-        normalize_section_name,
-        read_section,
-        write_section,
-    },
+    helpers::{normalize_section_name, read_section, write_section},
     render_generated_document,
 };
 
@@ -75,11 +68,7 @@ impl SpecStore {
         Ok(())
     }
 
-    pub fn delete_section(
-        &self,
-        id_or_slug: &str,
-        name: &str,
-    ) -> Result<(), SpecError> {
+    pub fn delete_section(&self, id_or_slug: &str, name: &str) -> Result<(), SpecError> {
         let uuid = self.resolve_id(id_or_slug)?;
         let indexed = self
             .inner
@@ -93,10 +82,7 @@ impl SpecStore {
         Ok(())
     }
 
-    pub fn list_sections(
-        &self,
-        id_or_slug: &str,
-    ) -> Result<Vec<String>, SpecError> {
+    pub fn list_sections(&self, id_or_slug: &str) -> Result<Vec<String>, SpecError> {
         let uuid = self.resolve_id(id_or_slug)?;
         let indexed = self
             .inner

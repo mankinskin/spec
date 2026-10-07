@@ -18,21 +18,11 @@
 //! - `PORT`       — HTTP listen port (default: 4002)
 //! - `STATIC_DIR` — Path to pre-built SPA static files
 
-use std::{
-    env,
-    io::Write,
-    path::PathBuf,
-};
+use std::{env, io::Write, path::PathBuf};
 use tracing::info;
 use viewer_api::{
-    client_log::{
-        client_log_router,
-        ClientLogState,
-    },
-    display_host,
-    init_tracing_full,
-    with_static_files,
-    TracingConfig,
+    client_log::{client_log_router, ClientLogState},
+    display_host, init_tracing_full, with_static_files, TracingConfig,
 };
 
 use spec_api::SpecStore;
@@ -67,20 +57,22 @@ fn parse_cli_options() -> CliOptions {
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
-            "--port" =>
+            "--port" => {
                 if let Some(value) = args.next() {
                     if let Ok(parsed) = value.parse::<u16>() {
                         port = parsed;
                     }
-                },
-            "--static-dir" =>
+                }
+            }
+            "--static-dir" => {
                 if let Some(value) = args.next() {
                     static_dir = PathBuf::from(value);
-                },
+                }
+            }
             "--index-root" => {
                 index_root = args.next().map(PathBuf::from);
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 
@@ -96,10 +88,8 @@ async fn shutdown_signal() {
 
     #[cfg(unix)]
     {
-        let mut sigterm = tokio::signal::unix::signal(
-            tokio::signal::unix::SignalKind::terminate(),
-        )
-        .expect("failed to register SIGTERM handler");
+        let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to register SIGTERM handler");
         tokio::select! {
             _ = ctrl_c => {}
             _ = sigterm.recv() => {}
@@ -138,8 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Resolve the spec index root. Falls back to the canonical store in the
     // current working directory if --index-root is not provided.
     let index_root = options.index_root.unwrap_or_else(|| {
-        let workspace =
-            std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let workspace = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         memory_kernel::workspace::canonical_store_root(&workspace, ".spec")
     });
 
@@ -160,8 +149,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let api_router = spec_http::http::build_router(state);
-    let api_router =
-        api_router.merge(client_log_router(ClientLogState::default()));
+    let api_router = api_router.merge(client_log_router(ClientLogState::default()));
     let app = with_static_files(api_router, Some(options.static_dir.clone()));
 
     let addr = format!("0.0.0.0:{}", options.port);

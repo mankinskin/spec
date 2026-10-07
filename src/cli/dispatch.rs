@@ -1,23 +1,13 @@
 use std::{
     collections::BTreeSet,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
 };
 
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 
 use spec_api::SpecStore;
 
-use crate::cli::{
-    CliRunError,
-    SpecCommandCli,
-    commands,
-};
+use crate::cli::{CliRunError, SpecCommandCli, commands};
 
 pub(super) fn dispatch(
     command: SpecCommandCli,
@@ -25,38 +15,27 @@ pub(super) fn dispatch(
     workspace_root_override: Option<&Path>,
     _as_json: bool,
 ) -> Result<Value, CliRunError> {
-    let normalized_workspace_root = if matches!(command, SpecCommandCli::Init)
-        || command_mutates(&command)
-    {
-        workspace_root_override
-            .map(|path| {
-                let selector = path.to_string_lossy();
-                memory_kernel::workspace::normalize_explicit_workspace_selector(
-                    Some(&selector),
-                )
-                .map_err(|error| CliRunError::BadRequest(error.to_string()))
-            })
-            .transpose()?
-    } else {
-        None
-    };
+    let normalized_workspace_root =
+        if matches!(command, SpecCommandCli::Init) || command_mutates(&command) {
+            workspace_root_override
+                .map(|path| {
+                    let selector = path.to_string_lossy();
+                    memory_kernel::workspace::normalize_explicit_workspace_selector(Some(&selector))
+                        .map_err(|error| CliRunError::BadRequest(error.to_string()))
+                })
+                .transpose()?
+        } else {
+            None
+        };
     let workspace_root_override = normalized_workspace_root
         .as_deref()
         .or(workspace_root_override);
 
-    require_explicit_workspace_for_create(
-        &command,
-        index_root_override,
-        workspace_root_override,
-    )?;
+    require_explicit_workspace_for_create(&command, index_root_override, workspace_root_override)?;
 
-    let index_root = resolve_index_root_for_command(
-        &command,
-        index_root_override,
-        workspace_root_override,
-    )?;
-    let default_workspace_root =
-        resolve_workspace_root(&index_root, workspace_root_override);
+    let index_root =
+        resolve_index_root_for_command(&command, index_root_override, workspace_root_override)?;
+    let default_workspace_root = resolve_workspace_root(&index_root, workspace_root_override);
 
     if matches!(command, SpecCommandCli::Init) {
         let store = SpecStore::init(&index_root)?;
@@ -94,9 +73,7 @@ fn require_explicit_workspace_for_create(
 ) -> Result<(), CliRunError> {
     if matches!(
         command,
-        SpecCommandCli::Init
-            | SpecCommandCli::Create(_)
-            | SpecCommandCli::Bootstrap(_)
+        SpecCommandCli::Init | SpecCommandCli::Create(_) | SpecCommandCli::Bootstrap(_)
     ) && index_root_override.is_none()
         && workspace_root_override.is_none()
     {
@@ -149,14 +126,13 @@ fn dispatch_mutating(
         SpecCommandCli::Update(args) => commands::cmd_update(args, store),
         SpecCommandCli::Delete(args) => commands::cmd_delete(args, store),
         SpecCommandCli::Scan(args) => commands::cmd_scan(args, store),
-        SpecCommandCli::SyncGenerated(args) =>
-            commands::cmd_sync_generated(args, store, default_workspace_root),
+        SpecCommandCli::SyncGenerated(args) => {
+            commands::cmd_sync_generated(args, store, default_workspace_root)
+        }
         SpecCommandCli::Section(args) => commands::cmd_section(args, store),
         SpecCommandCli::Bootstrap(args) => commands::cmd_bootstrap(args, store),
         SpecCommandCli::Init => unreachable!("Init handled before store open"),
-        _ => unreachable!(
-            "command_mutates keeps non-mutating commands out of this path"
-        ),
+        _ => unreachable!("command_mutates keeps non-mutating commands out of this path"),
     }
 }
 
@@ -171,18 +147,17 @@ fn dispatch_read_only(
         SpecCommandCli::Search(args) => commands::cmd_search(args, store),
         SpecCommandCli::AddRoot(args) => commands::cmd_add_root(args, store),
         SpecCommandCli::Tree(args) => commands::cmd_tree(args, store),
-        SpecCommandCli::Refs(args) =>
-            commands::cmd_refs(args, store, default_workspace_root),
+        SpecCommandCli::Refs(args) => commands::cmd_refs(args, store, default_workspace_root),
         SpecCommandCli::Health(args) => commands::cmd_health(args, store),
         SpecCommandCli::Move(args) => commands::cmd_move(args, store),
-        SpecCommandCli::StoreIndex(args) =>
-            commands::cmd_store_index(args, store, default_workspace_root),
-        SpecCommandCli::ValidateLinks =>
-            commands::cmd_validate_links(store, default_workspace_root),
+        SpecCommandCli::StoreIndex(args) => {
+            commands::cmd_store_index(args, store, default_workspace_root)
+        }
+        SpecCommandCli::ValidateLinks => {
+            commands::cmd_validate_links(store, default_workspace_root)
+        }
         SpecCommandCli::Init => unreachable!("Init handled before store open"),
-        _ => unreachable!(
-            "command_mutates keeps mutating commands out of this path"
-        ),
+        _ => unreachable!("command_mutates keeps mutating commands out of this path"),
     }
 }
 
@@ -205,9 +180,8 @@ fn resolve_index_root_for_command(
     override_path: Option<&Path>,
     workspace_root_override: Option<&Path>,
 ) -> Result<PathBuf, memory_kernel::workspace::ConsumerWorkspaceError> {
-    if override_path.is_none()
-        && matches!(command, SpecCommandCli::Init)
-            || override_path.is_none() && command_mutates(command)
+    if override_path.is_none() && matches!(command, SpecCommandCli::Init)
+        || override_path.is_none() && command_mutates(command)
     {
         if let Some(workspace_root) = workspace_root_override {
             return Ok(
@@ -237,22 +211,16 @@ fn resolve_index_root_from(
     )
 }
 
-fn resolve_workspace_root(
-    index_root: &Path,
-    workspace_root_override: Option<&Path>,
-) -> PathBuf {
+fn resolve_workspace_root(index_root: &Path, workspace_root_override: Option<&Path>) -> PathBuf {
     if let Some(path) = workspace_root_override {
-        let store_root =
-            memory_kernel::workspace::resolve_store_root_from(path, ".spec");
+        let store_root = memory_kernel::workspace::resolve_store_root_from(path, ".spec");
         return memory_kernel::workspace::resolve_workspace_root_from_store_root(
             &store_root,
             ".spec",
         );
     }
 
-    memory_kernel::workspace::resolve_workspace_root_from_store_root(
-        index_root, ".spec",
-    )
+    memory_kernel::workspace::resolve_workspace_root_from_store_root(index_root, ".spec")
 }
 
 fn register_descendant_scan_roots(
@@ -267,11 +235,9 @@ fn register_descendant_scan_roots(
         .collect::<BTreeSet<_>>();
     let mut reindex = false;
 
-    for root in memory_kernel::workspace::discover_workspace_scan_roots(
-        workspace_root,
-        ".spec",
-        "specs",
-    ) {
+    for root in
+        memory_kernel::workspace::discover_workspace_scan_roots(workspace_root, ".spec", "specs")
+    {
         if known_scan_roots.insert(root.path.clone()) {
             reindex = true;
         }

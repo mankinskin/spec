@@ -2,26 +2,13 @@ use std::collections::BTreeMap;
 
 use dioxus::prelude::*;
 use dioxus_router::Navigator;
-use viewer_api_dioxus::{
-    Card,
-    CardGrid,
-    CardSection,
-    HamburgerIcon,
-    PageHeader,
-    Sidebar,
-};
+use viewer_api_dioxus::{Card, CardGrid, CardSection, HamburgerIcon, PageHeader, Sidebar};
 
-use crate::{
-    components::spec_tree::SpecTree,
-    types::SpecSummary,
-};
+use crate::{components::spec_tree::SpecTree, types::SpecSummary};
 
 use super::{
     super::Route,
-    helpers::{
-        close_or_toggle_sidebar,
-        toggle_sidebar,
-    },
+    helpers::{close_or_toggle_sidebar, toggle_sidebar},
 };
 
 pub(super) fn render_spec_list_header(

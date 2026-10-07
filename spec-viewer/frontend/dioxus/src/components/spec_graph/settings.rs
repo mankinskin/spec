@@ -1,16 +1,10 @@
 use dioxus::prelude::*;
-use viewer_api_dioxus::{
-    graph3d::CameraMode,
-    CameraCommand,
-};
+use viewer_api_dioxus::{graph3d::CameraMode, CameraCommand};
 
 use crate::store::SpecGraphStore;
 
 use super::model::{
-    LayoutAlgorithm,
-    LayoutParams,
-    SELECTED_NODE_ZOOM_FACTOR_MAX,
-    SELECTED_NODE_ZOOM_FACTOR_MIN,
+    LayoutAlgorithm, LayoutParams, SELECTED_NODE_ZOOM_FACTOR_MAX, SELECTED_NODE_ZOOM_FACTOR_MIN,
 };
 
 pub(super) fn render_graph_settings_panel(
@@ -22,19 +16,13 @@ pub(super) fn render_graph_settings_panel(
     let draft_params = *store.draft_params.read();
     let draft_show_edges = *store.draft_show_edges.read();
     let camera_mode = *store.camera_mode.read();
-    let center_camera_on_selected_node =
-        *store.center_camera_on_selected_node.read();
+    let center_camera_on_selected_node = *store.center_camera_on_selected_node.read();
     let zoom_to_selected_node = *store.zoom_to_selected_node.read();
     let selected_node_zoom_factor = *store.selected_node_zoom_factor.read();
     let auto_layout_selected_node = *store.auto_layout_selected_node.read();
     let auto_apply = *store.auto_apply.read();
-    let apply_disabled = auto_apply
-        || !has_draft_changes(
-            store,
-            draft_algo,
-            draft_params,
-            draft_show_edges,
-        );
+    let apply_disabled =
+        auto_apply || !has_draft_changes(store, draft_algo, draft_params, draft_show_edges);
 
     rsx! {
         div {
@@ -387,80 +375,50 @@ fn has_draft_changes(
         || draft_show_edges != *store.committed_show_edges.read()
 }
 
-fn set_auto_apply(
-    mut store: SpecGraphStore,
-    enabled: bool,
-) {
+fn set_auto_apply(mut store: SpecGraphStore, enabled: bool) {
     store.auto_apply.set(enabled);
     if enabled {
         commit_draft(store);
     }
 }
 
-fn set_draft_algorithm(
-    mut store: SpecGraphStore,
-    algo: LayoutAlgorithm,
-) {
+fn set_draft_algorithm(mut store: SpecGraphStore, algo: LayoutAlgorithm) {
     store.draft_algo.set(algo);
     if *store.auto_apply.read() {
         commit_draft(store);
     }
 }
 
-fn set_draft_show_edges(
-    mut store: SpecGraphStore,
-    enabled: bool,
-) {
+fn set_draft_show_edges(mut store: SpecGraphStore, enabled: bool) {
     store.draft_show_edges.set(enabled);
     if *store.auto_apply.read() {
         commit_draft(store);
     }
 }
 
-fn set_zoom_to_selected_node(
-    mut store: SpecGraphStore,
-    enabled: bool,
-) {
+fn set_zoom_to_selected_node(mut store: SpecGraphStore, enabled: bool) {
     store.zoom_to_selected_node.set(enabled);
 }
 
-fn set_camera_mode(
-    mut store: SpecGraphStore,
-    mode: CameraMode,
-) {
+fn set_camera_mode(mut store: SpecGraphStore, mode: CameraMode) {
     store.camera_mode.set(mode);
 }
 
-fn set_center_camera_on_selected_node(
-    mut store: SpecGraphStore,
-    enabled: bool,
-) {
+fn set_center_camera_on_selected_node(mut store: SpecGraphStore, enabled: bool) {
     store.center_camera_on_selected_node.set(enabled);
 }
 
-fn set_selected_node_zoom_factor(
-    mut store: SpecGraphStore,
-    value: f32,
-) {
-    store.selected_node_zoom_factor.set(
-        value.clamp(
-            SELECTED_NODE_ZOOM_FACTOR_MIN,
-            SELECTED_NODE_ZOOM_FACTOR_MAX,
-        ),
-    );
+fn set_selected_node_zoom_factor(mut store: SpecGraphStore, value: f32) {
+    store
+        .selected_node_zoom_factor
+        .set(value.clamp(SELECTED_NODE_ZOOM_FACTOR_MIN, SELECTED_NODE_ZOOM_FACTOR_MAX));
 }
 
-fn set_auto_layout_selected_node(
-    mut store: SpecGraphStore,
-    enabled: bool,
-) {
+fn set_auto_layout_selected_node(mut store: SpecGraphStore, enabled: bool) {
     store.auto_layout_selected_node.set(enabled);
 }
 
-fn set_draft_params(
-    mut store: SpecGraphStore,
-    update: impl FnOnce(&mut LayoutParams),
-) {
+fn set_draft_params(mut store: SpecGraphStore, update: impl FnOnce(&mut LayoutParams)) {
     let mut params = *store.draft_params.read();
     update(&mut params);
     store.draft_params.set(params);

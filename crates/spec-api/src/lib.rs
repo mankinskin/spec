@@ -13,58 +13,27 @@ pub mod workspace;
 
 pub use memory_kernel::generated_markdown::GeneratedMarkdownSnippet;
 
-pub use domain_adoption::{
-    SPEC_DOMAIN_ID,
-    SPEC_DOMAIN_SCHEMA_VERSION,
-    spec_domain_manifest,
-};
+pub use domain_adoption::{SPEC_DOMAIN_ID, SPEC_DOMAIN_SCHEMA_VERSION, spec_domain_manifest};
 
-pub use code_ref::{
-    CodeRef,
-    SymbolKind,
-};
-pub use default_schema::{
-    spec_schema_registry,
-    specification_schema,
-};
+pub use code_ref::{CodeRef, SymbolKind};
+pub use default_schema::{spec_schema_registry, specification_schema};
 pub use manifest::{
-    AcceptanceCriterion,
-    ContractEdge,
-    CriterionArtifact,
-    CURRENT_FORMAT_VERSION,
-    EvidenceRequirement,
-    EvidenceReference,
-    ExpectedProperty,
-    FulfillmentStatus,
-    FulfillmentSubjectKind,
-    FulfillmentSummary,
-    SpecContractMode,
-    SpecHealthFinding,
-    SpecHealthReport,
-    SpecManifest,
+    AcceptanceCriterion, CURRENT_FORMAT_VERSION, ContractEdge, CriterionArtifact,
+    EvidenceReference, EvidenceRequirement, ExpectedProperty, FulfillmentStatus,
+    FulfillmentSubjectKind, FulfillmentSummary, SpecContractMode, SpecHealthFinding,
+    SpecHealthReport, SpecManifest,
 };
-pub use slug::{
-    SlugIndex,
-    validate_slug,
-};
+pub use slug::{SlugIndex, validate_slug};
 pub use store::{
-    GENERATED_BODY_FILE_COMMENT,
-    GENERATED_SPEC_FILE_COMMENT,
-    SpecStore,
-    render_generated_body,
+    GENERATED_BODY_FILE_COMMENT, GENERATED_SPEC_FILE_COMMENT, SpecStore, render_generated_body,
     render_generated_document,
 };
 pub use store_index::{
-    SPEC_INDEX_AGENT_HOOK_PATH,
-    SPEC_INDEX_TREE_DIR,
-    SpecCatalogArtifacts,
-    SpecCatalogSource,
+    SPEC_INDEX_AGENT_HOOK_PATH, SPEC_INDEX_TREE_DIR, SpecCatalogArtifacts, SpecCatalogSource,
     generate_spec_catalog,
 };
 pub use ticket_ref::TicketRef;
 pub use verification::{
-    SpecVerificationOutcome,
-    parse_guards_from_markdown,
-    recompute_spec_verified_state,
+    SpecVerificationOutcome, parse_guards_from_markdown, recompute_spec_verified_state,
 };
 pub use workspace::workspace_recovery_hint;

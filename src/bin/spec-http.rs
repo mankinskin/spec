@@ -1,11 +1,7 @@
 use std::path::PathBuf;
 
 use memory_kernel::runtime::init_transport_tracing;
-use spec::http::{
-    ServeConfig,
-    SpecAppState,
-    start_server,
-};
+use spec::http::{ServeConfig, SpecAppState, start_server};
 use spec_api::SpecStore;
 
 #[tokio::main]
@@ -23,16 +19,16 @@ async fn main() {
             "--port" => {
                 index += 1;
                 port = args[index].parse().expect("invalid port");
-            },
+            }
             "--host" => {
                 index += 1;
                 host = args[index].clone();
-            },
+            }
             "--index-root" => {
                 index += 1;
                 index_root = Some(args[index].clone());
-            },
-            _ => {},
+            }
+            _ => {}
         }
         index += 1;
     }

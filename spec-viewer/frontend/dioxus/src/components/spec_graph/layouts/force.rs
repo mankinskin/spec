@@ -1,19 +1,10 @@
 use std::collections::HashMap;
 
-use viewer_api_dioxus::{
-    graph3d::camera::CAMERA_FOV,
-    Node3D,
-};
+use viewer_api_dioxus::{graph3d::camera::CAMERA_FOV, Node3D};
 
-use crate::types::{
-    SpecGraphEdge,
-    SpecGraphNode,
-};
+use crate::types::{SpecGraphEdge, SpecGraphNode};
 
-use super::{
-    super::model::LayoutParams,
-    FrustumLayoutContext,
-};
+use super::{super::model::LayoutParams, FrustumLayoutContext};
 
 const FRUSTUM_FILL_RATIO: f32 = 0.92;
 const FRUSTUM_SCALE_MIN: f32 = 0.72;
@@ -36,12 +27,10 @@ pub(super) fn layout_force(
     let indexed_edges = indexed_edges(edges, &index);
     let k = params.link_dist.max(0.1);
     let mut temperature = 0.6_f32 * params.spread;
-    let frustum_gravity_active = params.frustum_gravity_enabled
-        && frustum_context.is_some()
-        && params.frustum_gravity > 0.0;
+    let frustum_gravity_active =
+        params.frustum_gravity_enabled && frustum_context.is_some() && params.frustum_gravity > 0.0;
     let extra_frustum_iterations = if frustum_gravity_active {
-        (params.frustum_gravity * params.frustum_settle.max(0.0) * 60.0).round()
-            as u32
+        (params.frustum_gravity * params.frustum_settle.max(0.0) * 60.0).round() as u32
     } else {
         0
     };
@@ -89,15 +78,11 @@ fn node_index(nodes: &[SpecGraphNode]) -> HashMap<&str, usize> {
         .collect()
 }
 
-fn initial_positions(
-    node_count: usize,
-    spread: f32,
-) -> Vec<[f32; 3]> {
+fn initial_positions(node_count: usize, spread: f32) -> Vec<[f32; 3]> {
     (0..node_count)
         .map(|i| {
             let phi = (1.0 - 2.0 * (i as f32 + 0.5) / node_count as f32).acos();
-            let theta =
-                std::f32::consts::PI * (1.0 + 5.0_f32.sqrt()) * i as f32;
+            let theta = std::f32::consts::PI * (1.0 + 5.0_f32.sqrt()) * i as f32;
             let radius = 4.0 * spread;
             [
                 radius * phi.sin() * theta.cos(),
@@ -108,10 +93,7 @@ fn initial_positions(
         .collect()
 }
 
-fn indexed_edges(
-    edges: &[SpecGraphEdge],
-    index: &HashMap<&str, usize>,
-) -> Vec<(usize, usize)> {
+fn indexed_edges(edges: &[SpecGraphEdge], index: &HashMap<&str, usize>) -> Vec<(usize, usize)> {
     edges
         .iter()
         .filter_map(|edge| {
@@ -122,12 +104,7 @@ fn indexed_edges(
         .collect()
 }
 
-fn apply_repulsion(
-    positions: &[[f32; 3]],
-    displacement: &mut [[f32; 3]],
-    repulsion: f32,
-    k: f32,
-) {
+fn apply_repulsion(positions: &[[f32; 3]], displacement: &mut [[f32; 3]], repulsion: f32, k: f32) {
     for i in 0..positions.len() {
         for j in (i + 1)..positions.len() {
             let delta = [
@@ -135,10 +112,7 @@ fn apply_repulsion(
                 positions[i][1] - positions[j][1],
                 positions[i][2] - positions[j][2],
             ];
-            let dist2 = (delta[0] * delta[0]
-                + delta[1] * delta[1]
-                + delta[2] * delta[2])
-                .max(0.01);
+            let dist2 = (delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]).max(0.01);
             let dist = dist2.sqrt();
             let force = repulsion * k * k / dist2;
             let unit = [delta[0] / dist, delta[1] / dist, delta[2] / dist];
@@ -165,10 +139,9 @@ fn apply_attraction(
             positions[from][1] - positions[to][1],
             positions[from][2] - positions[to][2],
         ];
-        let dist =
-            (delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2])
-                .sqrt()
-                .max(0.01);
+        let dist = (delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2])
+            .sqrt()
+            .max(0.01);
         let force = dist * dist / k;
         let unit = [delta[0] / dist, delta[1] / dist, delta[2] / dist];
         for axis in 0..3 {
@@ -178,16 +151,11 @@ fn apply_attraction(
     }
 }
 
-fn step_positions(
-    positions: &mut [[f32; 3]],
-    displacement: &[[f32; 3]],
-    temperature: f32,
-) {
+fn step_positions(positions: &mut [[f32; 3]], displacement: &[[f32; 3]], temperature: f32) {
     for (position, delta) in positions.iter_mut().zip(displacement.iter()) {
-        let magnitude =
-            (delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2])
-                .sqrt()
-                .max(0.001);
+        let magnitude = (delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2])
+            .sqrt()
+            .max(0.001);
         let step = magnitude.min(temperature);
         for axis in 0..3 {
             position[axis] += delta[axis] / magnitude * step;
@@ -210,8 +178,7 @@ fn apply_frustum_gravity(
     let tan_half_fov = (CAMERA_FOV * 0.5).tan().max(0.001);
     let aspect = context.aspect.max(0.6);
     let mut basis = CameraBasis::from_context(context);
-    basis.eye =
-        frustum_gravity_virtual_eye(positions, &basis, tan_half_fov, aspect);
+    basis.eye = frustum_gravity_virtual_eye(positions, &basis, tan_half_fov, aspect);
     let mut ndc_positions = Vec::with_capacity(positions.len());
     let mut min_ndc_x = f32::MAX;
     let mut max_ndc_x = f32::MIN;
@@ -235,10 +202,8 @@ fn apply_frustum_gravity(
     let center_ndc_y = (min_ndc_y + max_ndc_y) * 0.5;
     let half_ndc_w = ((max_ndc_x - min_ndc_x) * 0.5).max(0.001);
     let half_ndc_h = ((max_ndc_y - min_ndc_y) * 0.5).max(0.001);
-    let scale_x = (FRUSTUM_FILL_RATIO / half_ndc_w)
-        .clamp(FRUSTUM_SCALE_MIN, FRUSTUM_SCALE_MAX);
-    let scale_y = (FRUSTUM_FILL_RATIO / half_ndc_h)
-        .clamp(FRUSTUM_SCALE_MIN, FRUSTUM_SCALE_MAX);
+    let scale_x = (FRUSTUM_FILL_RATIO / half_ndc_w).clamp(FRUSTUM_SCALE_MIN, FRUSTUM_SCALE_MAX);
+    let scale_y = (FRUSTUM_FILL_RATIO / half_ndc_h).clamp(FRUSTUM_SCALE_MIN, FRUSTUM_SCALE_MAX);
     let fill_ratio = (half_ndc_w / FRUSTUM_FILL_RATIO)
         .max(half_ndc_h / FRUSTUM_FILL_RATIO)
         .clamp(0.55, 1.8);
@@ -288,8 +253,7 @@ fn apply_frustum_gravity(
             aspect,
         );
         let fill_world = camera_to_world_space(fill_camera_position, &basis);
-        let clearance_world =
-            camera_to_world_space(clearance_camera_position, &basis);
+        let clearance_world = camera_to_world_space(clearance_camera_position, &basis);
         let fill_delta = [
             fill_world[0] - position[0],
             fill_world[1] - position[1],
@@ -302,8 +266,7 @@ fn apply_frustum_gravity(
         ];
         for axis in 0..3 {
             displacement[index][axis] += fill_delta[axis] * fill_spring;
-            displacement[index][axis] +=
-                clearance_delta[axis] * clearance_spring;
+            displacement[index][axis] += clearance_delta[axis] * clearance_spring;
         }
     }
 }
@@ -330,11 +293,7 @@ fn apply_projected_overlap_repulsion(
         let camera_position = world_to_camera_space(position, basis);
         let ndc = camera_to_ndc(camera_position, tan_half_fov, aspect);
         camera_positions.push(camera_position);
-        screen_positions.push(ndc_to_screen_pixels(
-            ndc,
-            viewport_width,
-            viewport_height,
-        ));
+        screen_positions.push(ndc_to_screen_pixels(ndc, viewport_width, viewport_height));
         half_extents.push(projected_card_half_extents_px(camera_position));
     }
 
@@ -342,22 +301,16 @@ fn apply_projected_overlap_repulsion(
         for j in (i + 1)..positions.len() {
             let dx = screen_positions[j][0] - screen_positions[i][0];
             let dy = screen_positions[j][1] - screen_positions[i][1];
-            let overlap_x = half_extents[i][0]
-                + half_extents[j][0]
-                + FRUSTUM_EDGE_GUTTER_X_PX
-                - dx.abs();
-            let overlap_y = half_extents[i][1]
-                + half_extents[j][1]
-                + FRUSTUM_EDGE_GUTTER_Y_PX
-                - dy.abs();
+            let overlap_x =
+                half_extents[i][0] + half_extents[j][0] + FRUSTUM_EDGE_GUTTER_X_PX - dx.abs();
+            let overlap_y =
+                half_extents[i][1] + half_extents[j][1] + FRUSTUM_EDGE_GUTTER_Y_PX - dy.abs();
 
             if overlap_x <= 0.0 || overlap_y <= 0.0 {
                 continue;
             }
 
-            let avg_depth = ((camera_positions[i][2] + camera_positions[j][2])
-                * 0.5)
-                .max(0.1);
+            let avg_depth = ((camera_positions[i][2] + camera_positions[j][2]) * 0.5).max(0.1);
             if overlap_x < overlap_y {
                 let direction = if dx >= 0.0 { 1.0 } else { -1.0 };
                 let push_camera = screen_px_to_camera_x(
@@ -368,8 +321,7 @@ fn apply_projected_overlap_repulsion(
                     aspect,
                 ) * strength;
                 for axis in 0..3 {
-                    let world_push =
-                        basis.right[axis] * push_camera * direction;
+                    let world_push = basis.right[axis] * push_camera * direction;
                     displacement[i][axis] -= world_push;
                     displacement[j][axis] += world_push;
                 }
@@ -409,34 +361,19 @@ fn relax_projected_clearance(
         let mut had_overlap = false;
 
         for i in 0..ndc_positions.len() {
-            let camera_i =
-                ndc_to_camera(ndc_positions[i], *depth, tan_half_fov, aspect);
-            let screen_i = ndc_to_screen_pixels(
-                ndc_positions[i],
-                viewport_width,
-                viewport_height,
-            );
+            let camera_i = ndc_to_camera(ndc_positions[i], *depth, tan_half_fov, aspect);
+            let screen_i = ndc_to_screen_pixels(ndc_positions[i], viewport_width, viewport_height);
             let half_i = projected_card_half_extents_px(camera_i);
 
             for j in (i + 1)..ndc_positions.len() {
-                let camera_j = ndc_to_camera(
-                    ndc_positions[j],
-                    *depth,
-                    tan_half_fov,
-                    aspect,
-                );
-                let screen_j = ndc_to_screen_pixels(
-                    ndc_positions[j],
-                    viewport_width,
-                    viewport_height,
-                );
+                let camera_j = ndc_to_camera(ndc_positions[j], *depth, tan_half_fov, aspect);
+                let screen_j =
+                    ndc_to_screen_pixels(ndc_positions[j], viewport_width, viewport_height);
                 let half_j = projected_card_half_extents_px(camera_j);
                 let dx = screen_j[0] - screen_i[0];
                 let dy = screen_j[1] - screen_i[1];
-                let overlap_x =
-                    half_i[0] + half_j[0] + FRUSTUM_EDGE_GUTTER_X_PX - dx.abs();
-                let overlap_y =
-                    half_i[1] + half_j[1] + FRUSTUM_EDGE_GUTTER_Y_PX - dy.abs();
+                let overlap_x = half_i[0] + half_j[0] + FRUSTUM_EDGE_GUTTER_X_PX - dx.abs();
+                let overlap_y = half_i[1] + half_j[1] + FRUSTUM_EDGE_GUTTER_Y_PX - dy.abs();
 
                 if overlap_x <= 0.0 || overlap_y <= 0.0 {
                     continue;
@@ -477,17 +414,12 @@ fn relax_projected_clearance(
         }
 
         let mut max_adjustment = 0.0_f32;
-        for (ndc_position, pixel_offset) in
-            ndc_positions.iter_mut().zip(pixel_offsets.iter())
-        {
-            let ndc_delta_x =
-                pixel_offset[0].clamp(-96.0, 96.0) * 2.0 / viewport_width;
-            let ndc_delta_y =
-                pixel_offset[1].clamp(-96.0, 96.0) * 2.0 / viewport_height;
+        for (ndc_position, pixel_offset) in ndc_positions.iter_mut().zip(pixel_offsets.iter()) {
+            let ndc_delta_x = pixel_offset[0].clamp(-96.0, 96.0) * 2.0 / viewport_width;
+            let ndc_delta_y = pixel_offset[1].clamp(-96.0, 96.0) * 2.0 / viewport_height;
             ndc_position[0] += ndc_delta_x;
             ndc_position[1] += ndc_delta_y;
-            max_adjustment =
-                max_adjustment.max(ndc_delta_x.abs()).max(ndc_delta_y.abs());
+            max_adjustment = max_adjustment.max(ndc_delta_x.abs()).max(ndc_delta_y.abs());
         }
         recenter_ndc_positions(ndc_positions);
 
@@ -522,11 +454,7 @@ fn recenter_ndc_positions(ndc_positions: &mut [[f32; 2]]) {
     }
 }
 
-fn required_depth_scale(
-    card_span_px: f32,
-    separation_px: f32,
-    gutter_px: f32,
-) -> f32 {
+fn required_depth_scale(card_span_px: f32, separation_px: f32, gutter_px: f32) -> f32 {
     let remaining = separation_px - gutter_px;
     if remaining <= 1.0 {
         return 1.25;
@@ -555,12 +483,7 @@ fn screen_px_to_camera_x(
     (pixels * 2.0 / viewport_width) * depth * tan_half_fov * aspect
 }
 
-fn screen_px_to_camera_y(
-    pixels: f32,
-    depth: f32,
-    viewport_height: f32,
-    tan_half_fov: f32,
-) -> f32 {
+fn screen_px_to_camera_y(pixels: f32, depth: f32, viewport_height: f32, tan_half_fov: f32) -> f32 {
     (pixels * 2.0 / viewport_height) * depth * tan_half_fov
 }
 
@@ -599,10 +522,8 @@ fn frustum_gravity_virtual_eye(
         min_forward = min_forward.min(dot(delta, basis.forward));
     }
 
-    let required_depth_x =
-        max_right / (FRUSTUM_FILL_RATIO * tan_half_fov * aspect).max(0.001);
-    let required_depth_y =
-        max_up / (FRUSTUM_FILL_RATIO * tan_half_fov).max(0.001);
+    let required_depth_x = max_right / (FRUSTUM_FILL_RATIO * tan_half_fov * aspect).max(0.001);
+    let required_depth_y = max_up / (FRUSTUM_FILL_RATIO * tan_half_fov).max(0.001);
     let virtual_distance = required_depth_x
         .max(required_depth_y)
         .max((-min_forward).max(0.0) + 1.0)
@@ -657,10 +578,7 @@ impl CameraBasis {
     }
 }
 
-fn world_to_camera_space(
-    position: [f32; 3],
-    basis: &CameraBasis,
-) -> [f32; 3] {
+fn world_to_camera_space(position: [f32; 3], basis: &CameraBasis) -> [f32; 3] {
     let delta = [
         position[0] - basis.eye[0],
         position[1] - basis.eye[1],
@@ -673,10 +591,7 @@ fn world_to_camera_space(
     ]
 }
 
-fn camera_to_world_space(
-    position: [f32; 3],
-    basis: &CameraBasis,
-) -> [f32; 3] {
+fn camera_to_world_space(position: [f32; 3], basis: &CameraBasis) -> [f32; 3] {
     [
         basis.eye[0]
             + basis.right[0] * position[0]
@@ -693,23 +608,14 @@ fn camera_to_world_space(
     ]
 }
 
-fn camera_to_ndc(
-    camera_position: [f32; 3],
-    tan_half_fov: f32,
-    aspect: f32,
-) -> [f32; 2] {
+fn camera_to_ndc(camera_position: [f32; 3], tan_half_fov: f32, aspect: f32) -> [f32; 2] {
     [
         camera_position[0] / (camera_position[2] * tan_half_fov * aspect),
         camera_position[1] / (camera_position[2] * tan_half_fov),
     ]
 }
 
-fn ndc_to_camera(
-    ndc_position: [f32; 2],
-    depth: f32,
-    tan_half_fov: f32,
-    aspect: f32,
-) -> [f32; 3] {
+fn ndc_to_camera(ndc_position: [f32; 2], depth: f32, tan_half_fov: f32, aspect: f32) -> [f32; 3] {
     [
         ndc_position[0] * depth * tan_half_fov * aspect,
         ndc_position[1] * depth * tan_half_fov,
@@ -718,19 +624,14 @@ fn ndc_to_camera(
 }
 
 fn normalise(vector: [f32; 3]) -> [f32; 3] {
-    let length =
-        (vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2])
-            .sqrt();
+    let length = (vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]).sqrt();
     if length < 1e-6 {
         return [0.0, 0.0, 1.0];
     }
     [vector[0] / length, vector[1] / length, vector[2] / length]
 }
 
-fn cross(
-    lhs: [f32; 3],
-    rhs: [f32; 3],
-) -> [f32; 3] {
+fn cross(lhs: [f32; 3], rhs: [f32; 3]) -> [f32; 3] {
     [
         lhs[1] * rhs[2] - lhs[2] * rhs[1],
         lhs[2] * rhs[0] - lhs[0] * rhs[2],
@@ -738,10 +639,7 @@ fn cross(
     ]
 }
 
-fn dot(
-    lhs: [f32; 3],
-    rhs: [f32; 3],
-) -> f32 {
+fn dot(lhs: [f32; 3], rhs: [f32; 3]) -> f32 {
     lhs[0] * rhs[0] + lhs[1] * rhs[1] + lhs[2] * rhs[2]
 }
 
@@ -768,14 +666,7 @@ mod tests {
         let mut displacement = vec![[0.0_f32; 3]; positions.len()];
 
         let before = depth_range(&positions, &context);
-        apply_frustum_gravity(
-            &positions,
-            &mut displacement,
-            1.0,
-            1.0,
-            6.0,
-            &context,
-        );
+        apply_frustum_gravity(&positions, &mut displacement, 1.0, 1.0, 6.0, &context);
         step_positions(&mut positions, &displacement, 8.0);
         let after = depth_range(&positions, &context);
 
@@ -804,14 +695,7 @@ mod tests {
         let mut displacement = vec![[0.0_f32; 3]; positions.len()];
 
         let before = projected_fill(&positions, &context);
-        apply_frustum_gravity(
-            &positions,
-            &mut displacement,
-            1.0,
-            1.0,
-            6.0,
-            &context,
-        );
+        apply_frustum_gravity(&positions, &mut displacement, 1.0, 1.0, 6.0, &context);
         step_positions(&mut positions, &displacement, 8.0);
         let after = projected_fill(&positions, &context);
 
@@ -841,14 +725,7 @@ mod tests {
         let before = max_projected_overlap_px(&positions, &context);
         for _ in 0..12 {
             let mut displacement = vec![[0.0_f32; 3]; positions.len()];
-            apply_frustum_gravity(
-                &positions,
-                &mut displacement,
-                1.0,
-                1.0,
-                6.0,
-                &context,
-            );
+            apply_frustum_gravity(&positions, &mut displacement, 1.0, 1.0, 6.0, &context);
             step_positions(&mut positions, &displacement, 3.0);
         }
         let after = max_projected_overlap_px(&positions, &context);
@@ -903,9 +780,7 @@ mod tests {
             &far_context,
         );
 
-        for (near_delta, far_delta) in
-            near_displacement.iter().zip(far_displacement.iter())
-        {
+        for (near_delta, far_delta) in near_displacement.iter().zip(far_displacement.iter()) {
             for axis in 0..3 {
                 assert!(
                     (near_delta[axis] - far_delta[axis]).abs() < 1e-4,
@@ -930,28 +805,17 @@ mod tests {
             viewport_width: 1280.0,
             viewport_height: 720.0,
         };
-        let positions =
-            vec![[0.0, 0.0, 0.0], [1.2, -0.8, 0.6], [-0.9, 0.5, -1.1]];
+        let positions = vec![[0.0, 0.0, 0.0], [1.2, -0.8, 0.6], [-0.9, 0.5, -1.1]];
         let mut displacement = vec![[0.0_f32; 3]; positions.len()];
 
-        apply_frustum_gravity(
-            &positions,
-            &mut displacement,
-            0.0,
-            1.0,
-            6.0,
-            &context,
-        );
+        apply_frustum_gravity(&positions, &mut displacement, 0.0, 1.0, 6.0, &context);
 
         for delta in displacement {
             assert_eq!(delta, [0.0, 0.0, 0.0]);
         }
     }
 
-    fn depth_range(
-        positions: &[[f32; 3]],
-        context: &FrustumLayoutContext,
-    ) -> f32 {
+    fn depth_range(positions: &[[f32; 3]], context: &FrustumLayoutContext) -> f32 {
         let basis = CameraBasis::from_context(context);
         let mut min_depth = f32::MAX;
         let mut max_depth = f32::MIN;
@@ -963,10 +827,7 @@ mod tests {
         max_depth - min_depth
     }
 
-    fn projected_fill(
-        positions: &[[f32; 3]],
-        context: &FrustumLayoutContext,
-    ) -> f32 {
+    fn projected_fill(positions: &[[f32; 3]], context: &FrustumLayoutContext) -> f32 {
         let basis = CameraBasis::from_context(context);
         let tan_half_fov = (CAMERA_FOV * 0.5).tan();
         let mut min_x = f32::MAX;
@@ -989,10 +850,7 @@ mod tests {
         ((max_x - min_x) * (max_y - min_y)).abs()
     }
 
-    fn max_projected_overlap_px(
-        positions: &[[f32; 3]],
-        context: &FrustumLayoutContext,
-    ) -> f32 {
+    fn max_projected_overlap_px(positions: &[[f32; 3]], context: &FrustumLayoutContext) -> f32 {
         let basis = CameraBasis::from_context(context);
         let tan_half_fov = (CAMERA_FOV * 0.5).tan();
         let mut screen_positions = Vec::with_capacity(positions.len());
@@ -1000,8 +858,7 @@ mod tests {
 
         for &position in positions {
             let camera_position = world_to_camera_space(position, &basis);
-            let ndc =
-                camera_to_ndc(camera_position, tan_half_fov, context.aspect);
+            let ndc = camera_to_ndc(camera_position, tan_half_fov, context.aspect);
             screen_positions.push(ndc_to_screen_pixels(
                 ndc,
                 context.viewport_width,
@@ -1013,18 +870,12 @@ mod tests {
         let mut max_overlap = 0.0_f32;
         for i in 0..screen_positions.len() {
             for j in (i + 1)..screen_positions.len() {
-                let dx =
-                    (screen_positions[j][0] - screen_positions[i][0]).abs();
-                let dy =
-                    (screen_positions[j][1] - screen_positions[i][1]).abs();
-                let overlap_x = half_extents[i][0]
-                    + half_extents[j][0]
-                    + FRUSTUM_EDGE_GUTTER_X_PX
-                    - dx;
-                let overlap_y = half_extents[i][1]
-                    + half_extents[j][1]
-                    + FRUSTUM_EDGE_GUTTER_Y_PX
-                    - dy;
+                let dx = (screen_positions[j][0] - screen_positions[i][0]).abs();
+                let dy = (screen_positions[j][1] - screen_positions[i][1]).abs();
+                let overlap_x =
+                    half_extents[i][0] + half_extents[j][0] + FRUSTUM_EDGE_GUTTER_X_PX - dx;
+                let overlap_y =
+                    half_extents[i][1] + half_extents[j][1] + FRUSTUM_EDGE_GUTTER_Y_PX - dy;
                 if overlap_x > 0.0 && overlap_y > 0.0 {
                     max_overlap = max_overlap.max(overlap_x.min(overlap_y));
                 }

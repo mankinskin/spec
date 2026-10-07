@@ -1,17 +1,11 @@
 use std::{
     collections::BTreeMap,
     fs,
-    path::{
-        Path,
-        PathBuf,
-    },
+    path::{Path, PathBuf},
 };
 
 use chrono::Utc;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::field::Empty;
 use uuid::Uuid;
@@ -19,28 +13,17 @@ use uuid::Uuid;
 use memory_kernel::{
     ContentKind,
     cross_store_edges::{
-        CrossStoreEdgeClassifier,
-        EdgeReferenceResolution,
-        cross_workspace_edge_message,
-        short_id8,
+        CrossStoreEdgeClassifier, EdgeReferenceResolution, cross_workspace_edge_message, short_id8,
     },
     error::StorageError,
     generated_markdown::{
-        GeneratedMarkdownConfig,
-        GeneratedMarkdownSnippet,
-        prepare_generated_output,
+        GeneratedMarkdownConfig, GeneratedMarkdownSnippet, prepare_generated_output,
         render_markdown_file,
     },
-    model::filesystem::{
-        EntityFolderConfig,
-        ScanRoot,
-    },
+    model::filesystem::{EntityFolderConfig, ScanRoot},
     storage::{
         entity_fs::EntityFs,
-        entity_store::{
-            EntityStore,
-            ScanReport,
-        },
+        entity_store::{EntityStore, ScanReport},
         indexed::IndexedEntity,
     },
     workspace,
@@ -48,12 +31,7 @@ use memory_kernel::{
 
 use crate::{
     error::SpecError,
-    manifest::{
-        SpecHealthFinding,
-        SpecHealthReport,
-        SpecId,
-        SpecManifest,
-    },
+    manifest::{SpecHealthFinding, SpecHealthReport, SpecId, SpecManifest},
     slug::SlugIndex,
 };
 
@@ -65,12 +43,7 @@ mod sections;
 mod tests;
 
 use self::helpers::{
-    entity_to_spec,
-    read_body,
-    read_section,
-    read_spec_manifest,
-    spec_to_entity,
-    write_body,
+    entity_to_spec, read_body, read_section, read_spec_manifest, spec_to_entity, write_body,
 };
 
 const SPEC_MANIFEST_FILE: &str = "spec.toml";
@@ -79,10 +52,7 @@ const SPEC_INDEX_DIR: &str = ".spec";
 const GENERATED_SPEC_ARTIFACTS_FILE: &str = "generated.toml";
 const SPEC_STORE_TRACE_TARGET: &str = "spec_api::store";
 
-fn build_search_content(
-    spec: &SpecManifest,
-    body: &str,
-) -> Option<String> {
+fn build_search_content(spec: &SpecManifest, body: &str) -> Option<String> {
     let body = body.trim();
     let contract = spec.contract_search_text();
     let contract = contract.trim();
@@ -98,12 +68,8 @@ fn build_search_content(
 #[path = "store_generated.rs"]
 mod store_generated;
 pub use store_generated::{
-    GENERATED_BODY_FILE_COMMENT,
-    GENERATED_SPEC_FILE_COMMENT,
-    GeneratedSpecArtifactLocation,
-    GeneratedSpecArtifactTarget,
-    GeneratedSpecArtifacts,
-    render_generated_body,
+    GENERATED_BODY_FILE_COMMENT, GENERATED_SPEC_FILE_COMMENT, GeneratedSpecArtifactLocation,
+    GeneratedSpecArtifactTarget, GeneratedSpecArtifacts, render_generated_body,
     render_generated_document,
 };
 
@@ -130,16 +96,11 @@ impl SpecStore {
             requested_root = %index_root.display(),
         )
         .entered();
-        let index_root = workspace::resolve_store_root_at_fixed_workspace(
-            index_root,
-            SPEC_INDEX_DIR,
-        );
+        let index_root =
+            workspace::resolve_store_root_at_fixed_workspace(index_root, SPEC_INDEX_DIR);
         if !index_root.join("entities.db").is_file() {
             return Err(
-                memory_kernel::error::StorageError::WorkspaceNotFound {
-                    path: index_root,
-                }
-                .into(),
+                memory_kernel::error::StorageError::WorkspaceNotFound { path: index_root }.into(),
             );
         }
         let store = Self::open_internal(&index_root)?;
@@ -165,10 +126,8 @@ impl SpecStore {
             requested_root = %index_root.display(),
         )
         .entered();
-        let index_root = workspace::resolve_store_root_at_fixed_workspace(
-            index_root,
-            SPEC_INDEX_DIR,
-        );
+        let index_root =
+            workspace::resolve_store_root_at_fixed_workspace(index_root, SPEC_INDEX_DIR);
         let store = Self::open_internal(&index_root)?;
         tracing::info!(
             target: SPEC_STORE_TRACE_TARGET,
@@ -185,9 +144,7 @@ impl SpecStore {
     }
 
     /// Open or initialize a spec store and report whether this call initialized it.
-    pub fn open_or_init_with_status(
-        index_root: &Path,
-    ) -> Result<(Self, bool), SpecError> {
+    pub fn open_or_init_with_status(index_root: &Path) -> Result<(Self, bool), SpecError> {
         let span = tracing::info_span!(
             target: SPEC_STORE_TRACE_TARGET,
             "spec_store_open_or_init",
@@ -221,8 +178,7 @@ impl SpecStore {
         )
         .entered();
         let fs = EntityFs::with_config(
-            EntityFolderConfig::new(SPEC_MANIFEST_FILE, SPEC_LOCK_FILE)
-                .with_body_file("body.md"),
+            EntityFolderConfig::new(SPEC_MANIFEST_FILE, SPEC_LOCK_FILE).with_body_file("body.md"),
         );
         let registry = crate::default_schema::spec_schema_registry();
         let inner = EntityStore::open_with(index_root, fs, registry)?;
@@ -245,10 +201,7 @@ impl SpecStore {
         &self.inner
     }
 
-    pub fn scan(
-        &mut self,
-        reindex: bool,
-    ) -> Result<ScanReport, SpecError> {
+    pub fn scan(&mut self, reindex: bool) -> Result<ScanReport, SpecError> {
         let _span_guard = tracing::info_span!(
             target: SPEC_STORE_TRACE_TARGET,
             "spec_store_scan",
@@ -299,10 +252,7 @@ impl SpecStore {
         Ok(())
     }
 
-    pub fn resolve_id(
-        &self,
-        id_or_slug: &str,
-    ) -> Result<Uuid, SpecError> {
+    pub fn resolve_id(&self, id_or_slug: &str) -> Result<Uuid, SpecError> {
         let _span_guard = tracing::debug_span!(
             target: SPEC_STORE_TRACE_TARGET,
             "spec_store_resolve_id",
@@ -327,16 +277,13 @@ impl SpecStore {
             );
             return Ok(uuid);
         }
-        let resolved =
-            self.slug_index.resolve(id_or_slug).ok_or_else(|| {
-                SpecError::NotFound(format!(
-                    "{}; {}",
-                    id_or_slug,
-                    crate::workspace::workspace_recovery_hint(
-                        &self.inner.index_root
-                    )
-                ))
-            })?;
+        let resolved = self.slug_index.resolve(id_or_slug).ok_or_else(|| {
+            SpecError::NotFound(format!(
+                "{}; {}",
+                id_or_slug,
+                crate::workspace::workspace_recovery_hint(&self.inner.index_root)
+            ))
+        })?;
         tracing::debug!(
             target: SPEC_STORE_TRACE_TARGET,
             resolution = "slug",
@@ -350,10 +297,7 @@ impl SpecStore {
         self.slug_index.len()
     }
 
-    fn resolve_prefix(
-        &self,
-        prefix: &str,
-    ) -> Result<Option<Uuid>, SpecError> {
+    fn resolve_prefix(&self, prefix: &str) -> Result<Option<Uuid>, SpecError> {
         if prefix.len() < 4 {
             return Ok(None);
         }
@@ -436,18 +380,15 @@ impl SpecStore {
 
         self.slug_index.insert(slug.to_string(), manifest.id)?;
 
-        let _ =
-            self.inner
-                .fs
-                .append_history(&folder, entity.extra.clone(), None);
+        let _ = self
+            .inner
+            .fs
+            .append_history(&folder, entity.extra.clone(), None);
 
         Ok(manifest.id)
     }
 
-    fn resolve_target_root(
-        &self,
-        target_root: Option<&Path>,
-    ) -> Result<PathBuf, StorageError> {
+    fn resolve_target_root(&self, target_root: Option<&Path>) -> Result<PathBuf, StorageError> {
         let Some(target_root) = target_root else {
             // Canonical: write into the workspace's own .workflow-tools/spec/specs/ directory
             // (resolved via the index_root), ignoring any registered scan roots.
@@ -473,14 +414,9 @@ impl SpecStore {
         }
 
         let workspace_root =
-            workspace::resolve_workspace_root_from_store_root(
-                target_root,
-                SPEC_INDEX_DIR,
-            );
-        let candidate_store = workspace::resolve_store_root_at_fixed_workspace(
-            &workspace_root,
-            SPEC_INDEX_DIR,
-        );
+            workspace::resolve_workspace_root_from_store_root(target_root, SPEC_INDEX_DIR);
+        let candidate_store =
+            workspace::resolve_store_root_at_fixed_workspace(&workspace_root, SPEC_INDEX_DIR);
 
         if candidate_store.is_dir()
             && (requested == candidate_store
@@ -497,10 +433,7 @@ impl SpecStore {
         )))
     }
 
-    pub fn get(
-        &self,
-        id_or_slug: &str,
-    ) -> Result<SpecManifest, SpecError> {
+    pub fn get(&self, id_or_slug: &str) -> Result<SpecManifest, SpecError> {
         let uuid = self.resolve_id(id_or_slug)?;
         let indexed = self
             .inner
@@ -509,10 +442,7 @@ impl SpecStore {
         read_spec_manifest(&indexed.path)
     }
 
-    pub fn get_full(
-        &self,
-        id_or_slug: &str,
-    ) -> Result<(SpecManifest, String), SpecError> {
+    pub fn get_full(&self, id_or_slug: &str) -> Result<(SpecManifest, String), SpecError> {
         let uuid = self.resolve_id(id_or_slug)?;
         let indexed = self
             .inner
@@ -523,10 +453,7 @@ impl SpecStore {
         Ok((spec, body))
     }
 
-    pub fn health(
-        &self,
-        id_or_slug: &str,
-    ) -> Result<SpecHealthReport, SpecError> {
+    pub fn health(&self, id_or_slug: &str) -> Result<SpecHealthReport, SpecError> {
         let spec = self.get(id_or_slug)?;
         Ok(self.build_health_report([spec])?)
     }
@@ -563,24 +490,21 @@ impl SpecStore {
                 SPEC_INDEX_DIR,
             ),
         );
-        let edge_classifier = CrossStoreEdgeClassifier::for_store(
-            &self.inner.index_root,
-            ContentKind::Spec,
-            policy,
-        );
+        let edge_classifier =
+            CrossStoreEdgeClassifier::for_store(&self.inner.index_root, ContentKind::Spec, policy);
 
         if let Some(classifier) = edge_classifier.as_ref() {
-            let all_edges =
-                self.inner.list_all_edges().map_err(SpecError::Storage)?;
+            let all_edges = self.inner.list_all_edges().map_err(SpecError::Storage)?;
             for spec in &specs {
-                for edge in all_edges.iter().filter(|edge| {
-                    edge.kind == "depends_on" && edge.from == spec.id
-                }) {
+                for edge in all_edges
+                    .iter()
+                    .filter(|edge| edge.kind == "depends_on" && edge.from == spec.id)
+                {
                     if self.inner.get_indexed(&edge.to)?.is_some() {
                         continue;
                     }
                     match classifier.classify(edge.to) {
-                        EdgeReferenceResolution::Ok => {},
+                        EdgeReferenceResolution::Ok => {}
                         EdgeReferenceResolution::CrossWorkspaceEdge {
                             target_workspace_root,
                             ..
@@ -588,21 +512,16 @@ impl SpecStore {
                             id: spec.id,
                             issue: format!(
                                 "cross_workspace_edge: {}",
-                                cross_workspace_edge_message(
-                                    edge.to,
-                                    &target_workspace_root,
-                                )
+                                cross_workspace_edge_message(edge.to, &target_workspace_root,)
                             ),
                         }),
-                        EdgeReferenceResolution::DanglingEdge => {
-                            issues.push(SpecHealthFinding {
-                                id: spec.id,
-                                issue: format!(
-                                    "dangling_edge: depends_on edge points to {} which is missing.",
-                                    short_id8(edge.to)
-                                ),
-                            })
-                        },
+                        EdgeReferenceResolution::DanglingEdge => issues.push(SpecHealthFinding {
+                            id: spec.id,
+                            issue: format!(
+                                "dangling_edge: depends_on edge points to {} which is missing.",
+                                short_id8(edge.to)
+                            ),
+                        }),
                     }
                 }
             }
@@ -632,9 +551,7 @@ impl SpecStore {
             if let Some(new_slug) = new_slug_val.as_str() {
                 crate::slug::validate_slug(new_slug)?;
                 let old = self.inner.fs.read(&indexed.path)?;
-                if let Some(old_slug) =
-                    old.extra.get("slug").and_then(|value| value.as_str())
-                {
+                if let Some(old_slug) = old.extra.get("slug").and_then(|value| value.as_str()) {
                     self.slug_index.remove(old_slug);
                 }
                 self.slug_index.insert(new_slug.to_string(), uuid)?;
@@ -643,15 +560,12 @@ impl SpecStore {
 
         if let Some(to) = to_state {
             let current = indexed.state.as_deref().unwrap_or("draft");
-            if let Some(schema) =
-                self.inner.schema_registry().get("specification")
-            {
+            if let Some(schema) = self.inner.schema_registry().get("specification") {
                 schema.ensure_transition(current, to)?;
             }
         }
 
-        let updated_entity =
-            self.inner.fs.update(&indexed.path, &patch, to_state)?;
+        let updated_entity = self.inner.fs.update(&indexed.path, &patch, to_state)?;
         let changed = updated_entity.extra != existing_entity.extra;
 
         if !changed {
@@ -690,12 +604,11 @@ impl SpecStore {
         let body = read_body(&indexed.path);
         let search_content = build_search_content(&spec, &body);
         let created_at_str = indexed.created_at.to_rfc3339();
-        let effort_str =
-            updated_entity.extra.get("effort").and_then(|v| match v {
-                serde_json::Value::String(s) => Some(s.clone()),
-                serde_json::Value::Number(n) => Some(n.to_string()),
-                _ => None,
-            });
+        let effort_str = updated_entity.extra.get("effort").and_then(|v| match v {
+            serde_json::Value::String(s) => Some(s.clone()),
+            serde_json::Value::Number(n) => Some(n.to_string()),
+            _ => None,
+        });
         self.inner.search.upsert(
             &uuid,
             title.as_deref(),
@@ -706,19 +619,15 @@ impl SpecStore {
             effort_str.as_deref(),
         )?;
 
-        let _ = self.inner.fs.append_history(
-            &indexed.path,
-            updated_entity.extra.clone(),
-            None,
-        );
+        let _ = self
+            .inner
+            .fs
+            .append_history(&indexed.path, updated_entity.extra.clone(), None);
 
         Ok(spec)
     }
 
-    fn validate_v2_manifest(
-        &self,
-        manifest: &SpecManifest,
-    ) -> Result<(), SpecError> {
+    fn validate_v2_manifest(&self, manifest: &SpecManifest) -> Result<(), SpecError> {
         if let Some(version) = manifest.format_version()
             && version != crate::manifest::CURRENT_FORMAT_VERSION
         {
@@ -740,12 +649,8 @@ impl SpecStore {
                 continue;
             }
             let other = self.inner.fs.read(&indexed.path)?;
-            if other.extra.get("component_id").and_then(Value::as_str)
-                == Some(component_id)
-            {
-                return Err(SpecError::DuplicateComponentId(
-                    component_id.to_string(),
-                ));
+            if other.extra.get("component_id").and_then(Value::as_str) == Some(component_id) {
+                return Err(SpecError::DuplicateComponentId(component_id.to_string()));
             }
         }
         Ok(())
@@ -760,9 +665,7 @@ impl SpecStore {
         if let Some(value) = patch.get("component_id") {
             let old = existing.get("component_id").and_then(Value::as_str);
             let new = value.as_str().ok_or_else(|| {
-                SpecError::InvalidComponentId(
-                    "component_id must be a string".to_string(),
-                )
+                SpecError::InvalidComponentId("component_id must be a string".to_string())
             })?;
             if old != Some(new) {
                 return Err(SpecError::ImmutableComponentId(id.to_string()));
@@ -802,19 +705,14 @@ impl SpecStore {
         Ok(())
     }
 
-    pub fn delete(
-        &mut self,
-        id_or_slug: &str,
-    ) -> Result<(), SpecError> {
+    pub fn delete(&mut self, id_or_slug: &str) -> Result<(), SpecError> {
         let uuid = self.resolve_id(id_or_slug)?;
         let indexed = self
             .inner
             .get_indexed(&uuid)?
             .ok_or_else(|| SpecError::NotFound(uuid.to_string()))?;
         let entity = self.inner.fs.read(&indexed.path)?;
-        if let Some(slug) =
-            entity.extra.get("slug").and_then(|value| value.as_str())
-        {
+        if let Some(slug) = entity.extra.get("slug").and_then(|value| value.as_str()) {
             self.slug_index.remove(slug);
         }
         self.inner.fs.delete(&indexed.path)?;

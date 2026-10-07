@@ -3,21 +3,13 @@ use super::*;
 use super::*;
 use crate::manifest::SpecManifest;
 
-fn spec(
-    slug: &str,
-    title: &str,
-    component: &str,
-) -> SpecManifest {
+fn spec(slug: &str, title: &str, component: &str) -> SpecManifest {
     let mut m = SpecManifest::new(slug, title, component);
     m.set_scope("internal");
     m
 }
 
-fn source<'a>(
-    manifest: &'a SpecManifest,
-    path: &str,
-    body: &str,
-) -> SpecCatalogSource<'a> {
+fn source<'a>(manifest: &'a SpecManifest, path: &str, body: &str) -> SpecCatalogSource<'a> {
     SpecCatalogSource {
         manifest,
         source_path: path.to_string(),
@@ -56,8 +48,16 @@ fn hierarchy_relations_are_populated() {
     child.set_parent(&parent_id);
 
     let sources = vec![
-        source(&parent, ".workflow-tools/spec/specs/root/spec.toml", "Root body."),
-        source(&child, ".workflow-tools/spec/specs/child/spec.toml", "Child body."),
+        source(
+            &parent,
+            ".workflow-tools/spec/specs/root/spec.toml",
+            "Root body.",
+        ),
+        source(
+            &child,
+            ".workflow-tools/spec/specs/child/spec.toml",
+            "Child body.",
+        ),
     ];
 
     let artifacts = generate_spec_catalog(&sources, ".workflow-tools/spec");
@@ -94,8 +94,16 @@ fn catalog_has_provenance_grouping_and_hierarchy_bullets() {
     child.set_parent(&parent_id);
 
     let sources = vec![
-        source(&parent, ".workflow-tools/spec/specs/root/spec.toml", "Root body."),
-        source(&child, ".workflow-tools/spec/specs/child/spec.toml", "Child body."),
+        source(
+            &parent,
+            ".workflow-tools/spec/specs/root/spec.toml",
+            "Root body.",
+        ),
+        source(
+            &child,
+            ".workflow-tools/spec/specs/child/spec.toml",
+            "Child body.",
+        ),
     ];
 
     let artifacts = generate_spec_catalog(&sources, ".workflow-tools/spec");

@@ -1,9 +1,6 @@
 use std::path::Path;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 /// The kind of symbol a code reference points to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,10 +50,7 @@ pub struct RefValidation {
 }
 
 /// Validate code refs against a workspace root.
-pub fn validate_refs(
-    code_refs: &[CodeRef],
-    workspace_root: &Path,
-) -> Vec<RefValidation> {
+pub fn validate_refs(code_refs: &[CodeRef], workspace_root: &Path) -> Vec<RefValidation> {
     code_refs
         .iter()
         .map(|r| {
@@ -64,8 +58,7 @@ pub fn validate_refs(
             let file_exists = file_path.exists();
             let line_range_valid = r.line_end >= r.line_start
                 && if file_exists {
-                    let content =
-                        std::fs::read_to_string(&file_path).unwrap_or_default();
+                    let content = std::fs::read_to_string(&file_path).unwrap_or_default();
                     let line_count = content.lines().count() as u32;
                     r.line_end <= line_count
                 } else {
@@ -91,10 +84,7 @@ pub fn validate_refs(
 }
 
 /// Reverse lookup: find which code refs reference a given file path.
-pub fn find_refs_for_file<'a>(
-    code_refs: &'a [CodeRef],
-    file_path: &str,
-) -> Vec<&'a CodeRef> {
+pub fn find_refs_for_file<'a>(code_refs: &'a [CodeRef], file_path: &str) -> Vec<&'a CodeRef> {
     code_refs.iter().filter(|r| r.file == file_path).collect()
 }
 

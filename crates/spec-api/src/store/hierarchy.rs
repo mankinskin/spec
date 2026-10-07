@@ -1,20 +1,11 @@
 use std::collections::VecDeque;
 
-use crate::{
-    error::SpecError,
-    manifest::SpecManifest,
-};
+use crate::{error::SpecError, manifest::SpecManifest};
 
-use super::{
-    SpecStore,
-    read_spec_manifest,
-};
+use super::{SpecStore, read_spec_manifest};
 
 impl SpecStore {
-    pub fn children(
-        &self,
-        id_or_slug: &str,
-    ) -> Result<Vec<SpecManifest>, SpecError> {
+    pub fn children(&self, id_or_slug: &str) -> Result<Vec<SpecManifest>, SpecError> {
         let uuid = self.resolve_id(id_or_slug)?;
         let uuid_str = uuid.to_string();
         let mut children = Vec::new();
@@ -30,10 +21,7 @@ impl SpecStore {
         Ok(children)
     }
 
-    pub fn ancestors(
-        &self,
-        id_or_slug: &str,
-    ) -> Result<Vec<SpecManifest>, SpecError> {
+    pub fn ancestors(&self, id_or_slug: &str) -> Result<Vec<SpecManifest>, SpecError> {
         let mut result = Vec::new();
         let mut current = self.get(id_or_slug)?;
 
@@ -46,10 +34,7 @@ impl SpecStore {
         Ok(result)
     }
 
-    pub fn subtree(
-        &self,
-        id_or_slug: &str,
-    ) -> Result<Vec<SpecManifest>, SpecError> {
+    pub fn subtree(&self, id_or_slug: &str) -> Result<Vec<SpecManifest>, SpecError> {
         let uuid = self.resolve_id(id_or_slug)?;
         let all = self.inner.list_indexed()?;
         let mut result = Vec::new();

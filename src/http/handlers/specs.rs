@@ -1,31 +1,16 @@
 use axum::{
-    extract::{
-        Extension,
-        Path,
-        Query,
-        State,
-    },
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
-    response::{
-        IntoResponse,
-        Json,
-        Response,
-    },
+    response::{IntoResponse, Json, Response},
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
 use spec_api::SpecManifest;
 use viewer_api::error::RequestIdExt;
 
-use crate::http::{
-    error::spec_err,
-    state::SpecAppState,
-};
+use crate::http::{error::spec_err, state::SpecAppState};
 
 // ── Query/Path extractors ─────────────────────────────────────────────────────
 
@@ -137,10 +122,7 @@ fn spec_to_detail(spec: &SpecManifest) -> SpecDetail {
     }
 }
 
-fn matches_query(
-    spec: &SpecManifest,
-    query: &str,
-) -> bool {
+fn matches_query(spec: &SpecManifest, query: &str) -> bool {
     let needle = query.trim().to_lowercase();
     if needle.is_empty() {
         return true;
@@ -152,10 +134,7 @@ fn matches_query(
         .any(|field| field.to_lowercase().contains(&needle))
 }
 
-fn matches_list_params(
-    spec: &SpecManifest,
-    params: &ListParams,
-) -> bool {
+fn matches_list_params(spec: &SpecManifest, params: &ListParams) -> bool {
     if let Some(state) = params.state.as_deref() {
         if spec.state() != Some(state) {
             return false;
@@ -231,7 +210,7 @@ pub async fn search_specs(
                 items,
             })
             .into_response()
-        },
+        }
         Err(e) => crate::http::error::storage_err(e, &rid.0),
     }
 }
@@ -334,9 +313,9 @@ pub async fn move_spec(
     Path(id): Path<String>,
     Json(req): Json<MoveSpecRequest>,
 ) -> Response {
-    let to = match memory_kernel::workspace::normalize_explicit_workspace_selector(
-        Some(&req.to_workspace_root),
-    ) {
+    let to = match memory_kernel::workspace::normalize_explicit_workspace_selector(Some(
+        &req.to_workspace_root,
+    )) {
         Ok(path) => path,
         Err(error) => {
             return viewer_api::error::ApiError::new(
@@ -465,36 +444,20 @@ pub async fn delete_spec(
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::BTreeMap,
-        fs,
-        path::PathBuf,
-    };
+    use std::{collections::BTreeMap, fs, path::PathBuf};
 
     use axum::{
-        body::{
-            Body,
-            to_bytes,
-        },
-        http::{
-            Request,
-            StatusCode,
-        },
+        body::{Body, to_bytes},
+        http::{Request, StatusCode},
     };
     use serde::Deserialize;
     use serde_json::json;
-    use spec_api::{
-        SpecManifest,
-        SpecStore,
-    };
+    use spec_api::{SpecManifest, SpecStore};
     use tempfile::tempdir;
     use tower::ServiceExt;
 
     use super::*;
-    use crate::http::{
-        build_router,
-        state::SpecAppState,
-    };
+    use crate::http::{build_router, state::SpecAppState};
 
     #[derive(Debug, Deserialize)]
     struct ContractParityFixture {
@@ -507,8 +470,7 @@ mod tests {
     fn load_contract_parity_fixture() -> ContractParityFixture {
         let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("test-fixtures/spec-contract-parity.json");
-        serde_json::from_str(&fs::read_to_string(fixture_path).unwrap())
-            .unwrap()
+        serde_json::from_str(&fs::read_to_string(fixture_path).unwrap()).unwrap()
     }
 
     async fn response_json(response: axum::response::Response) -> Value {
@@ -541,8 +503,7 @@ mod tests {
 
     #[test]
     fn matches_query_treats_blank_input_as_match_all() {
-        let spec =
-            SpecManifest::new("spec-viewer", "Spec Viewer", "spec-viewer");
+        let spec = SpecManifest::new("spec-viewer", "Spec Viewer", "spec-viewer");
 
         assert!(matches_query(&spec, ""));
         assert!(matches_query(&spec, "   "));

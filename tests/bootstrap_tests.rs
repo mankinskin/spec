@@ -1,12 +1,6 @@
-use std::{
-    fs,
-    path::Path,
-};
+use std::{fs, path::Path};
 
-use spec::{
-    BootstrapArgs,
-    cmd_bootstrap,
-};
+use spec::{BootstrapArgs, cmd_bootstrap};
 use spec_api::SpecStore;
 use tempfile::TempDir;
 
@@ -14,14 +8,9 @@ use tempfile::TempDir;
 
 /// Create a minimal Rust crate in `dir` with a given set of source files.
 /// `files` is a list of (relative-path-under-src, content) tuples.
-fn make_crate(
-    dir: &Path,
-    name: &str,
-    files: &[(&str, &str)],
-) {
-    let cargo_toml = format!(
-        "[package]\nname = \"{name}\"\nversion = \"0.1.0\"\nedition = \"2024\"\n"
-    );
+fn make_crate(dir: &Path, name: &str, files: &[(&str, &str)]) {
+    let cargo_toml =
+        format!("[package]\nname = \"{name}\"\nversion = \"0.1.0\"\nedition = \"2024\"\n");
     fs::write(dir.join("Cargo.toml"), cargo_toml).unwrap();
     let src = dir.join("src");
     fs::create_dir_all(&src).unwrap();
@@ -40,10 +29,7 @@ fn open_store(tmp: &TempDir) -> SpecStore {
     SpecStore::init(tmp.path()).unwrap()
 }
 
-fn bootstrap_args(
-    crate_dir: &Path,
-    dry_run: bool,
-) -> BootstrapArgs {
+fn bootstrap_args(crate_dir: &Path, dry_run: bool) -> BootstrapArgs {
     BootstrapArgs {
         crate_path: crate_dir.to_path_buf(),
         component: None,

@@ -1,23 +1,10 @@
-use std::collections::{
-    BTreeMap,
-    HashMap,
-};
+use std::collections::{BTreeMap, HashMap};
 
 use feedback_api::{
-    EntityFeedbackStore,
-    EntityUrn,
-    FeedbackEntry,
-    FeedbackNoteKind,
-    FeedbackProvenance,
-    FeedbackRating,
-    FeedbackSource,
+    EntityFeedbackStore, EntityUrn, FeedbackEntry, FeedbackNoteKind, FeedbackProvenance,
+    FeedbackRating, FeedbackSource,
 };
-use test_api::{
-    ExecutionQuery,
-    ExecutionSort,
-    TestStoreConfig,
-    ValidationOutcome,
-};
+use test_api::{ExecutionQuery, ExecutionSort, TestStoreConfig, ValidationOutcome};
 
 use crate::SpecStore;
 
@@ -28,8 +15,7 @@ pub fn parse_guards_from_markdown(body: &str) -> Vec<String> {
     for line in body.lines() {
         let trimmed = line.trim();
         if trimmed.starts_with('#') {
-            let heading =
-                trimmed.trim_start_matches('#').trim().to_ascii_lowercase();
+            let heading = trimmed.trim_start_matches('#').trim().to_ascii_lowercase();
             in_guards = heading == "guards";
             continue;
         }
@@ -37,9 +23,7 @@ pub fn parse_guards_from_markdown(body: &str) -> Vec<String> {
         if in_guards && (trimmed.starts_with('-') || trimmed.starts_with('*')) {
             if let Some(start) = trimmed.find('`') {
                 if let Some(end) = trimmed[start + 1..].find('`') {
-                    guards.push(
-                        trimmed[start + 1..start + 1 + end].trim().to_string(),
-                    );
+                    guards.push(trimmed[start + 1..start + 1 + end].trim().to_string());
                 }
             }
         }
@@ -132,9 +116,9 @@ pub fn recompute_spec_verified_state(
     let failed_guards: Vec<String> = guards
         .iter()
         .filter(|guard| {
-            !latest_executions.get(*guard).is_some_and(|exec| {
-                matches!(exec.outcome, ValidationOutcome::Passed)
-            })
+            !latest_executions
+                .get(*guard)
+                .is_some_and(|exec| matches!(exec.outcome, ValidationOutcome::Passed))
         })
         .cloned()
         .collect();
@@ -148,23 +132,14 @@ pub fn recompute_spec_verified_state(
 
     if let Some(store) = feedback_store {
         let workspace = store.workspace_path();
-        let urn = EntityUrn::spec(
-            workspace.to_string_lossy().into_owned(),
-            spec_id_or_slug,
-        )?;
+        let urn = EntityUrn::spec(workspace.to_string_lossy().into_owned(), spec_id_or_slug)?;
         let entry = FeedbackEntry::new(
             FeedbackSource::System,
             urn,
             Some(FeedbackRating::Helpful),
-            Some(
-                "spec guards passed and verified state recomputed".to_string(),
-            ),
+            Some("spec guards passed and verified state recomputed".to_string()),
             Some(FeedbackNoteKind::Note),
-            FeedbackProvenance::new(
-                None,
-                Some("spec-api/system".to_string()),
-                None,
-            )?,
+            FeedbackProvenance::new(None, Some("spec-api/system".to_string()), None)?,
         )?;
         let _ = store.record_entry(entry)?;
     }
@@ -178,14 +153,9 @@ mod tests {
     use test_api::TestStoreConfig;
 
     use super::{
-        SpecVerificationOutcome,
-        parse_guards_from_markdown,
-        recompute_spec_verified_state,
+        SpecVerificationOutcome, parse_guards_from_markdown, recompute_spec_verified_state,
     };
-    use crate::{
-        SpecManifest,
-        SpecStore,
-    };
+    use crate::{SpecManifest, SpecStore};
 
     #[test]
     fn parses_guard_ids_from_markdown_list() {
@@ -205,8 +175,7 @@ The verification of this specification contract is gated by:
     fn spec_store_with_body(body: &str) -> (TempDir, SpecStore, String) {
         let tmp = TempDir::new().expect("tempdir");
         let mut store = SpecStore::init(tmp.path()).expect("init spec store");
-        let manifest =
-            SpecManifest::new("root/guarded", "Guarded", "test-component");
+        let manifest = SpecManifest::new("root/guarded", "Guarded", "test-component");
         let id = store.create(&manifest, body, None).expect("create spec");
         (tmp, store, id.to_string())
     }
@@ -224,8 +193,7 @@ The verification of this specification contract is gated by:
         let (_test_tmp, test_store) = empty_test_store();
 
         let outcome =
-            recompute_spec_verified_state(&mut store, &test_store, None, &id)
-                .expect("recompute");
+            recompute_spec_verified_state(&mut store, &test_store, None, &id).expect("recompute");
 
         assert_eq!(outcome, SpecVerificationOutcome::NoGuards);
         assert!(!outcome.is_verified());
@@ -239,13 +207,12 @@ The verification of this specification contract is gated by:
         let (_test_tmp, test_store) = empty_test_store();
 
         let outcome =
-            recompute_spec_verified_state(&mut store, &test_store, None, &id)
-                .expect("recompute");
+            recompute_spec_verified_state(&mut store, &test_store, None, &id).expect("recompute");
 
         match outcome {
             SpecVerificationOutcome::Pending { missing_guards } => {
                 assert_eq!(missing_guards, vec!["val-alpha", "val-beta"]);
-            },
+            }
             other => panic!("expected pending outcome, got {other:?}"),
         }
     }

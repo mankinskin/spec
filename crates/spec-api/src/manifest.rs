@@ -1,21 +1,11 @@
 use std::collections::BTreeMap;
 
-use chrono::{
-    DateTime,
-    Utc,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-    de::DeserializeOwned,
-};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::{
-    code_ref::CodeRef,
-    ticket_ref::TicketRef,
-};
+use crate::{code_ref::CodeRef, ticket_ref::TicketRef};
 
 pub type SpecId = Uuid;
 
@@ -173,11 +163,7 @@ pub struct SpecManifest {
 
 impl SpecManifest {
     /// Create a new spec manifest with required fields.
-    pub fn new(
-        slug: &str,
-        title: &str,
-        component: &str,
-    ) -> Self {
+    pub fn new(slug: &str, title: &str, component: &str) -> Self {
         let mut extra = BTreeMap::new();
         extra.insert("slug".to_string(), Value::String(slug.to_string()));
         extra.insert("title".to_string(), Value::String(title.to_string()));
@@ -318,148 +304,89 @@ impl SpecManifest {
 
     // ── setters ──
 
-    pub fn set_slug(
-        &mut self,
-        slug: &str,
-    ) {
+    pub fn set_slug(&mut self, slug: &str) {
         self.extra
             .insert("slug".to_string(), Value::String(slug.to_string()));
     }
 
-    pub fn set_format_version(
-        &mut self,
-        version: u32,
-    ) {
-        self.extra.insert(
-            "format_version".to_string(),
-            Value::Number(version.into()),
-        );
+    pub fn set_format_version(&mut self, version: u32) {
+        self.extra
+            .insert("format_version".to_string(), Value::Number(version.into()));
     }
 
-    pub fn set_component_id(
-        &mut self,
-        component_id: &str,
-    ) {
+    pub fn set_component_id(&mut self, component_id: &str) {
         self.extra.insert(
             "component_id".to_string(),
             Value::String(component_id.to_string()),
         );
     }
 
-    pub fn set_criterion_artifacts(
-        &mut self,
-        artifacts: Vec<CriterionArtifact>,
-    ) {
+    pub fn set_criterion_artifacts(&mut self, artifacts: Vec<CriterionArtifact>) {
         self.set_criteria(artifacts);
     }
 
-    pub fn set_evidence_references(
-        &mut self,
-        references: Vec<EvidenceReference>,
-    ) {
+    pub fn set_evidence_references(&mut self, references: Vec<EvidenceReference>) {
         self.set_evidence(references);
     }
 
-    pub fn set_contract_edges(
-        &mut self,
-        edges: Vec<ContractEdge>,
-    ) {
+    pub fn set_contract_edges(&mut self, edges: Vec<ContractEdge>) {
         self.set_outward_contract_edges(edges);
     }
 
-    pub fn set_criteria(
-        &mut self,
-        criteria: Vec<CriterionArtifact>,
-    ) {
+    pub fn set_criteria(&mut self, criteria: Vec<CriterionArtifact>) {
         self.set_typed_field("criteria", criteria);
     }
 
-    pub fn set_evidence(
-        &mut self,
-        evidence: Vec<EvidenceReference>,
-    ) {
+    pub fn set_evidence(&mut self, evidence: Vec<EvidenceReference>) {
         self.set_typed_field("evidence", evidence);
     }
 
-    pub fn set_outward_contract_edges(
-        &mut self,
-        edges: Vec<ContractEdge>,
-    ) {
+    pub fn set_outward_contract_edges(&mut self, edges: Vec<ContractEdge>) {
         self.set_typed_field("outward_contract_edges", edges);
     }
 
-    pub fn set_title(
-        &mut self,
-        title: &str,
-    ) {
+    pub fn set_title(&mut self, title: &str) {
         self.extra
             .insert("title".to_string(), Value::String(title.to_string()));
     }
 
-    pub fn set_state(
-        &mut self,
-        state: &str,
-    ) {
+    pub fn set_state(&mut self, state: &str) {
         self.extra
             .insert("state".to_string(), Value::String(state.to_string()));
     }
 
-    pub fn set_component(
-        &mut self,
-        comp: &str,
-    ) {
+    pub fn set_component(&mut self, comp: &str) {
         self.extra
             .insert("component".to_string(), Value::String(comp.to_string()));
     }
 
-    pub fn set_scope(
-        &mut self,
-        scope: &str,
-    ) {
+    pub fn set_scope(&mut self, scope: &str) {
         self.extra
             .insert("scope".to_string(), Value::String(scope.to_string()));
     }
 
-    pub fn set_parent(
-        &mut self,
-        parent: &str,
-    ) {
+    pub fn set_parent(&mut self, parent: &str) {
         self.extra
             .insert("parent".to_string(), Value::String(parent.to_string()));
     }
 
-    pub fn set_contract_mode(
-        &mut self,
-        mode: Option<SpecContractMode>,
-    ) {
+    pub fn set_contract_mode(&mut self, mode: Option<SpecContractMode>) {
         self.set_typed_field("contract_mode", mode);
     }
 
-    pub fn set_expected_properties(
-        &mut self,
-        expected_properties: Vec<ExpectedProperty>,
-    ) {
+    pub fn set_expected_properties(&mut self, expected_properties: Vec<ExpectedProperty>) {
         self.set_typed_field("expected_properties", expected_properties);
     }
 
-    pub fn set_acceptance_criteria(
-        &mut self,
-        acceptance_criteria: Vec<AcceptanceCriterion>,
-    ) {
+    pub fn set_acceptance_criteria(&mut self, acceptance_criteria: Vec<AcceptanceCriterion>) {
         self.set_typed_field("acceptance_criteria", acceptance_criteria);
     }
 
-    pub fn set_evidence_requirements(
-        &mut self,
-        evidence_requirements: Vec<EvidenceRequirement>,
-    ) {
+    pub fn set_evidence_requirements(&mut self, evidence_requirements: Vec<EvidenceRequirement>) {
         self.set_typed_field("evidence_requirements", evidence_requirements);
     }
 
-    pub fn set_fulfillment_summaries(
-        &mut self,
-        fulfillment_summaries: Vec<FulfillmentSummary>,
-    ) {
+    pub fn set_fulfillment_summaries(&mut self, fulfillment_summaries: Vec<FulfillmentSummary>) {
         self.set_typed_field("fulfillment_summaries", fulfillment_summaries);
     }
 
@@ -468,10 +395,7 @@ impl SpecManifest {
     /// (via `set_typed_field`'s empty-vec handling) so serialized manifests
     /// stay minimal, and so a migrated manifest no longer carries the
     /// legacy untyped entries once replaced.
-    pub fn set_related_tickets(
-        &mut self,
-        related_tickets: Vec<TicketRef>,
-    ) {
+    pub fn set_related_tickets(&mut self, related_tickets: Vec<TicketRef>) {
         self.set_typed_field("related_tickets", related_tickets);
     }
 
@@ -554,10 +478,9 @@ impl SpecManifest {
         }
 
         match self.parse_field::<SpecContractMode>("contract_mode") {
-            Ok(Some(_)) => {},
+            Ok(Some(_)) => {}
             Ok(None) => issues.push("missing contract mode".to_string()),
-            Err(error) =>
-                issues.push(format!("invalid contract mode: {error}")),
+            Err(error) => issues.push(format!("invalid contract mode: {error}")),
         }
 
         let parsed = self.parse_structured_contract_fields(&mut issues);
@@ -584,9 +507,9 @@ impl SpecManifest {
         );
         let acceptance_criterion_ids = collect_unique_ids(
             &mut issues,
-            acceptance_criteria.iter().map(|criterion| {
-                ("acceptance criterion", criterion.id.as_str())
-            }),
+            acceptance_criteria
+                .iter()
+                .map(|criterion| ("acceptance criterion", criterion.id.as_str())),
         );
         let evidence_requirement_ids = collect_unique_ids(
             &mut issues,
@@ -654,49 +577,38 @@ impl SpecManifest {
         }
     }
 
-    fn parse_field<T>(
-        &self,
-        key: &str,
-    ) -> Result<Option<T>, String>
+    fn parse_field<T>(&self, key: &str) -> Result<Option<T>, String>
     where
         T: DeserializeOwned,
     {
         self.extra
             .get(key)
             .cloned()
-            .map(|value| {
-                serde_json::from_value(value).map_err(|error| error.to_string())
-            })
+            .map(|value| serde_json::from_value(value).map_err(|error| error.to_string()))
             .transpose()
     }
 
-    fn parse_vec_field<T>(
-        &self,
-        key: &str,
-    ) -> Vec<T>
+    fn parse_vec_field<T>(&self, key: &str) -> Vec<T>
     where
         T: DeserializeOwned,
     {
         self.parse_field(key).ok().flatten().unwrap_or_default()
     }
 
-    fn set_typed_field<T>(
-        &mut self,
-        key: &str,
-        value: T,
-    ) where
+    fn set_typed_field<T>(&mut self, key: &str, value: T)
+    where
         T: Serialize,
     {
         match serde_json::to_value(value) {
             Ok(value) if should_remove_typed_field(&value) => {
                 self.extra.remove(key);
-            },
+            }
             Ok(value) => {
                 self.extra.insert(key.to_string(), value);
-            },
+            }
             Err(_) => {
                 self.extra.remove(key);
-            },
+            }
         }
     }
 }
@@ -723,7 +635,7 @@ where
         Err(error) => {
             issues.push(format!("{error_prefix}: {error}"));
             Vec::new()
-        },
+        }
     }
 }
 
@@ -773,10 +685,12 @@ fn validate_fulfillment_summary_targets(
 ) {
     for summary in fulfillment_summaries {
         let target_exists = match summary.subject_kind {
-            FulfillmentSubjectKind::AcceptanceCriterion =>
-                acceptance_criterion_ids.contains(&summary.subject_id),
-            FulfillmentSubjectKind::EvidenceRequirement =>
-                evidence_requirement_ids.contains(&summary.subject_id),
+            FulfillmentSubjectKind::AcceptanceCriterion => {
+                acceptance_criterion_ids.contains(&summary.subject_id)
+            }
+            FulfillmentSubjectKind::EvidenceRequirement => {
+                evidence_requirement_ids.contains(&summary.subject_id)
+            }
         };
 
         if !target_exists {
@@ -803,8 +717,7 @@ fn validate_required_evidence_fulfillment(
         let summaries: Vec<&FulfillmentSummary> = fulfillment_summaries
             .iter()
             .filter(|summary| {
-                summary.subject_kind
-                    == FulfillmentSubjectKind::EvidenceRequirement
+                summary.subject_kind == FulfillmentSubjectKind::EvidenceRequirement
                     && summary.subject_id == evidence.id
             })
             .collect();

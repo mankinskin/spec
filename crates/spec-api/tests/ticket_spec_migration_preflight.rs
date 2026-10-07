@@ -17,10 +17,7 @@ use std::collections::BTreeMap;
 
 use memory_kernel::ContentKind;
 use memory_kernel::model::domain::EntityTypeId;
-use memory_kernel::model::migration::{
-    ExternalUrnVersionConstraint,
-    MigrationDryRunReport,
-};
+use memory_kernel::model::migration::{ExternalUrnVersionConstraint, MigrationDryRunReport};
 use memory_kernel::model::urn::Urn;
 use spec_api::domain_adoption::spec_domain_manifest;
 use ticket_api::model::domain_adoption::ticket_domain_manifest;
@@ -80,12 +77,18 @@ fn composed_ticket_and_spec_preflight_reports_are_clean_without_touching_live_da
         &[],
     );
 
-    assert!(ticket_report.steps.is_empty(), "no schema-version bump planned for ticket");
+    assert!(
+        ticket_report.steps.is_empty(),
+        "no schema-version bump planned for ticket"
+    );
     assert!(
         ticket_report.external_urn_violations.is_empty(),
         "spec's external URN constraint is satisfied by the ticket domain's current version"
     );
-    assert!(spec_report.steps.is_empty(), "no schema-version bump planned for spec");
+    assert!(
+        spec_report.steps.is_empty(),
+        "no schema-version bump planned for spec"
+    );
     assert!(spec_report.external_urn_violations.is_empty());
 }
 

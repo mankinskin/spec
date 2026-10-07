@@ -351,10 +351,12 @@ mod tests {
         let mut plan = source_store
             .plan_move_preflight(&spec_id, &target_workspace)
             .unwrap();
-        assert!(!plan
-            .blockers
-            .iter()
-            .any(|blocker| matches!(blocker, MoveBlocker::MissingTargetStore { .. })));
+        assert!(
+            !plan
+                .blockers
+                .iter()
+                .any(|blocker| matches!(blocker, MoveBlocker::MissingTargetStore { .. }))
+        );
         plan.blockers.retain(|blocker| {
             !matches!(
                 blocker,
@@ -366,11 +368,13 @@ mod tests {
         source_store.execute_move_with_journal(&plan).unwrap();
 
         let destination_store = SpecStore::open(&target_workspace).unwrap();
-        assert!(destination_store
-            .entity_store()
-            .get_indexed(&spec_id)
-            .unwrap()
-            .is_some());
+        assert!(
+            destination_store
+                .entity_store()
+                .get_indexed(&spec_id)
+                .unwrap()
+                .is_some()
+        );
     }
 
     /// Spec hierarchy is slug-based and code refs are repo-relative, so a move
@@ -481,10 +485,12 @@ mod tests {
                 && entry.direction == MoveReferenceDirection::Outbound
                 && !entry.visible_from_destination
         }));
-        assert!(!plan
-            .blockers
-            .iter()
-            .any(|blocker| matches!(blocker, MoveBlocker::InvisibleReference { .. })));
+        assert!(
+            !plan
+                .blockers
+                .iter()
+                .any(|blocker| matches!(blocker, MoveBlocker::InvisibleReference { .. }))
+        );
     }
 
     #[test]
@@ -614,10 +620,12 @@ mod tests {
             .plan_move_set(&[spec_id], &target_workspace)
             .unwrap();
 
-        assert!(!plan.entity_plans[0]
-            .blockers
-            .iter()
-            .any(|blocker| matches!(blocker, MoveBlocker::MissingTargetStore { .. })));
+        assert!(
+            !plan.entity_plans[0]
+                .blockers
+                .iter()
+                .any(|blocker| matches!(blocker, MoveBlocker::MissingTargetStore { .. }))
+        );
 
         for entity_plan in &mut plan.entity_plans {
             entity_plan.blockers.retain(|blocker| {
@@ -631,11 +639,13 @@ mod tests {
         source_store.execute_move_set(&plan).unwrap();
 
         let destination_store = SpecStore::open(&target_workspace).unwrap();
-        assert!(destination_store
-            .entity_store()
-            .get_indexed(&spec_id)
-            .unwrap()
-            .is_some());
+        assert!(
+            destination_store
+                .entity_store()
+                .get_indexed(&spec_id)
+                .unwrap()
+                .is_some()
+        );
     }
 
     #[test]

@@ -1,6 +1,6 @@
 //! `spec move` — cross-workspace spec move, mirroring the ticket move surface.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use spec_api::SpecStore;
 use uuid::Uuid;
 
@@ -49,9 +49,9 @@ pub(crate) fn cmd_move(args: MoveArgs, store: &SpecStore) -> Result<Value, CliRu
             "move requires --to-workspace-root in plan/execute mode".to_string(),
         )
     })?;
-    let to_workspace_root = memory_kernel::workspace::normalize_explicit_workspace_selector(
-        Some(&selector.to_string_lossy()),
-    )
+    let to_workspace_root = memory_kernel::workspace::normalize_explicit_workspace_selector(Some(
+        &selector.to_string_lossy(),
+    ))
     .map_err(|error| CliRunError::BadRequest(error.to_string()))?;
 
     let requested_ids = id.split(',').map(str::trim).filter(|id| !id.is_empty());

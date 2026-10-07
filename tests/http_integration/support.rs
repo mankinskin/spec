@@ -1,20 +1,11 @@
-use spec::http::{
-    SpecAppState,
-    build_router,
-};
-use spec_api::{
-    SpecManifest,
-    SpecStore,
-};
+use spec::http::{SpecAppState, build_router};
+use spec_api::{SpecManifest, SpecStore};
 
 fn open_or_init_store(dir: &std::path::Path) -> SpecStore {
     SpecStore::open_or_init(dir).expect("open or init spec store")
 }
 
-fn ensure_scan_root(
-    store: &SpecStore,
-    specs_dir: &std::path::Path,
-) {
+fn ensure_scan_root(store: &SpecStore, specs_dir: &std::path::Path) {
     let has_root = store
         .entity_store()
         .list_scan_roots()
@@ -43,11 +34,7 @@ pub(super) fn make_app(dir: &std::path::Path) -> axum::Router {
     build_router(state)
 }
 
-pub(super) fn seed_spec(
-    dir: &std::path::Path,
-    slug: &str,
-    title: &str,
-) -> String {
+pub(super) fn seed_spec(dir: &std::path::Path, slug: &str, title: &str) -> String {
     let mut store = open_or_init_store(dir);
     let specs_dir = dir.join("specs");
     std::fs::create_dir_all(&specs_dir).unwrap();

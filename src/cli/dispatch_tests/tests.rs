@@ -1,9 +1,6 @@
 use super::*;
 
-use std::{
-    collections::BTreeMap,
-    fs,
-};
+use std::{collections::BTreeMap, fs};
 
 use serde::Deserialize;
 use tempfile::tempdir;
@@ -20,14 +17,10 @@ fn spec_store_root(workspace_root: &Path) -> PathBuf {
     memory_kernel::workspace::canonical_store_root(workspace_root, ".spec")
 }
 
-fn create_nested_spec_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, String)
-{
+fn create_nested_spec_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, String) {
     use spec_api::{
         SpecManifest,
-        code_ref::{
-            CodeRef,
-            SymbolKind,
-        },
+        code_ref::{CodeRef, SymbolKind},
     };
 
     let dir = tempdir().unwrap();
@@ -40,11 +33,7 @@ fn create_nested_spec_fixture() -> (tempfile::TempDir, PathBuf, PathBuf, String)
 
     let _root_store = SpecStore::init(&spec_store_root(&repo)).unwrap();
     let mut child_store = SpecStore::init(&spec_store_root(&child)).unwrap();
-    let mut manifest = SpecManifest::new(
-        "memory-api/nested-spec",
-        "Nested spec",
-        "memory-api",
-    );
+    let mut manifest = SpecManifest::new("memory-api/nested-spec", "Nested spec", "memory-api");
     manifest.code_refs = vec![CodeRef {
         file: "src/lib.rs".to_string(),
         symbol: "nested".to_string(),
@@ -68,10 +57,7 @@ fn create_cli_spec_fixture() -> (tempfile::TempDir, PathBuf) {
     (dir, repo)
 }
 
-fn run_git(
-    repo_root: &Path,
-    args: &[&str],
-) {
+fn run_git(repo_root: &Path, args: &[&str]) {
     let status = std::process::Command::new("git")
         .current_dir(repo_root)
         .args(args)
@@ -81,8 +67,8 @@ fn run_git(
 }
 
 fn load_contract_parity_fixture() -> ContractParityFixture {
-    let fixture_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("test-fixtures/spec-contract-parity.json");
+    let fixture_path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-fixtures/spec-contract-parity.json");
     serde_json::from_str(&fs::read_to_string(fixture_path).unwrap()).unwrap()
 }
 
@@ -107,8 +93,7 @@ fn resolve_index_root_prefers_explicit_workspace_root() {
     std::fs::create_dir_all(spec_store_root(&repo)).unwrap();
     std::fs::create_dir_all(spec_store_root(&child)).unwrap();
 
-    let resolved =
-        resolve_index_root_from(None, Some(&child), None, Some(&repo)).unwrap();
+    let resolved = resolve_index_root_from(None, Some(&child), None, Some(&repo)).unwrap();
 
     assert_eq!(resolved, spec_store_root(&child));
 }
@@ -158,9 +143,11 @@ fn init_requires_explicit_workspace_or_index_root() {
     let error = dispatch(SpecCommandCli::Init, None, None, true)
         .expect_err("init must not select an ambient workspace");
 
-    assert!(error
-        .to_string()
-        .contains("store initialization requires explicit"));
+    assert!(
+        error
+            .to_string()
+            .contains("store initialization requires explicit")
+    );
 }
 
 #[test]
@@ -236,8 +223,7 @@ fn dispatch_move_dry_run_returns_supported_preflight_plan() {
     SpecStore::init(&spec_store_root(&target_workspace)).unwrap();
 
     let mut store = SpecStore::open(&spec_store_root(&repo)).unwrap();
-    let manifest =
-        spec_api::SpecManifest::new("sample/spec", "Sample spec", "spec-cli");
+    let manifest = spec_api::SpecManifest::new("sample/spec", "Sample spec", "spec-cli");
     let spec_id = store.create(&manifest, "body", None).unwrap();
     store.scan(true).unwrap();
 
@@ -424,19 +410,19 @@ fn dispatch_authoring_contract_supports_legacy_current_format_specs() {
     let (_dir, repo) = create_cli_spec_fixture();
     let body_path = repo.join("legacy-body.md");
     fs::write(
-            &body_path,
-            concat!(
-                "# Summary\n\n",
-                "Document the legacy current-format authoring path.\n\n",
-                "## Motivation\n\n",
-                "Keep existing authored specs valid during the first migration slice.\n\n",
-                "## Current State\n\n",
-                "Legacy current-format authored specs still exist in the store.\n\n",
-                "## Acceptance Criteria\n\n",
-                "- Legacy authored specs remain readable and searchable.\n",
-            ),
-        )
-        .unwrap();
+        &body_path,
+        concat!(
+            "# Summary\n\n",
+            "Document the legacy current-format authoring path.\n\n",
+            "## Motivation\n\n",
+            "Keep existing authored specs valid during the first migration slice.\n\n",
+            "## Current State\n\n",
+            "Legacy current-format authored specs still exist in the store.\n\n",
+            "## Acceptance Criteria\n\n",
+            "- Legacy authored specs remain readable and searchable.\n",
+        ),
+    )
+    .unwrap();
 
     let created = dispatch(
         SpecCommandCli::Create(crate::cli::CreateArgs {
@@ -458,26 +444,24 @@ fn dispatch_authoring_contract_supports_legacy_current_format_specs() {
 
     let updated_body_path = repo.join("legacy-body-updated.md");
     fs::write(
-            &updated_body_path,
-            concat!(
-                "# Summary\n\n",
-                "Document the legacy current-format authoring path.\n\n",
-                "## Motivation\n\n",
-                "Keep existing authored specs valid during the first migration slice.\n\n",
-                "## Current State\n\n",
-                "Legacy current-format authored specs still exist in the store.\n\n",
-                "## Acceptance Criteria\n\n",
-                "- Legacy authored specs remain readable and searchable after updates.\n",
-            ),
-        )
-        .unwrap();
+        &updated_body_path,
+        concat!(
+            "# Summary\n\n",
+            "Document the legacy current-format authoring path.\n\n",
+            "## Motivation\n\n",
+            "Keep existing authored specs valid during the first migration slice.\n\n",
+            "## Current State\n\n",
+            "Legacy current-format authored specs still exist in the store.\n\n",
+            "## Acceptance Criteria\n\n",
+            "- Legacy authored specs remain readable and searchable after updates.\n",
+        ),
+    )
+    .unwrap();
 
     dispatch(
         SpecCommandCli::Update(crate::cli::UpdateArgs {
             id: spec_id.clone(),
-            fields: vec![
-                "title=Legacy current format spec updated".to_string(),
-            ],
+            fields: vec!["title=Legacy current format spec updated".to_string()],
             to_state: None,
             body_file: Some(updated_body_path),
             force_body: false,
@@ -504,14 +488,16 @@ fn dispatch_authoring_contract_supports_legacy_current_format_specs() {
         fetched["spec"]["fields"]["title"],
         "Legacy current format spec updated"
     );
-    assert!(fetched["body"].as_str().unwrap().contains(
-        "Legacy current-format authored specs still exist in the store."
-    ));
+    assert!(
+        fetched["body"]
+            .as_str()
+            .unwrap()
+            .contains("Legacy current-format authored specs still exist in the store.")
+    );
 
     let searched = dispatch(
         SpecCommandCli::Search(crate::cli::SearchArgs {
-            query: "legacy current-format authored specs still exist"
-                .to_string(),
+            query: "legacy current-format authored specs still exist".to_string(),
             limit: 10,
         }),
         None,
@@ -623,15 +609,15 @@ fn dispatch_authoring_contract_supports_expectation_oriented_specs() {
         "Expectation-oriented spec updated"
     );
     assert!(
-        fetched["body"].as_str().unwrap().contains(
-            "Store-owned evidence can satisfy or block implementation."
-        )
+        fetched["body"]
+            .as_str()
+            .unwrap()
+            .contains("Store-owned evidence can satisfy or block implementation.")
     );
 
     let searched = dispatch(
         SpecCommandCli::Search(crate::cli::SearchArgs {
-            query: "store-owned evidence can satisfy or block implementation"
-                .to_string(),
+            query: "store-owned evidence can satisfy or block implementation".to_string(),
             limit: 10,
         }),
         None,
@@ -846,8 +832,7 @@ fn dispatch_structured_contract_fields_accept_toon_files() {
 }
 
 #[test]
-fn dispatch_store_index_writes_catalog_with_hierarchy_then_check_detects_drift()
-{
+fn dispatch_store_index_writes_catalog_with_hierarchy_then_check_detects_drift() {
     use spec_api::SpecManifest;
 
     let (_dir, repo) = create_cli_spec_fixture();
@@ -928,10 +913,7 @@ fn collect_files_recursive(root: &Path) -> Vec<PathBuf> {
     out
 }
 
-fn collect_files_into(
-    dir: &Path,
-    out: &mut Vec<PathBuf>,
-) {
+fn collect_files_into(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };

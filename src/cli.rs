@@ -1,13 +1,7 @@
 use std::path::PathBuf;
 
-use clap::{
-    Parser,
-    Subcommand,
-};
-use serde_json::{
-    Value,
-    json,
-};
+use clap::{Parser, Subcommand};
+use serde_json::{Value, json};
 
 use spec_api::error::SpecError;
 
@@ -146,21 +140,15 @@ pub fn run(cli: SpecCli) -> Result<CliOutput, CliRunError> {
 }
 
 fn render_human(payload: &Value) -> String {
-    serde_json::to_string_pretty(payload)
-        .unwrap_or_else(|_| format!("{:?}", payload))
+    serde_json::to_string_pretty(payload).unwrap_or_else(|_| format!("{:?}", payload))
 }
 
-pub fn error_output(
-    message: &str,
-    format: Option<MachineOutputFormat>,
-) -> String {
+pub fn error_output(message: &str, format: Option<MachineOutputFormat>) -> String {
     let payload = json!({"status": "error", "message": message});
     match format {
         Some(MachineOutputFormat::Json) => payload.to_string(),
-        Some(MachineOutputFormat::Toon) =>
-            toon_format::encode_default(&payload).unwrap_or_else(|_| {
-                format!("status: error\nmessage: {message}")
-            }),
+        Some(MachineOutputFormat::Toon) => toon_format::encode_default(&payload)
+            .unwrap_or_else(|_| format!("status: error\nmessage: {message}")),
         None => message.to_string(),
     }
 }
@@ -170,17 +158,16 @@ pub fn render_machine_output(
     format: MachineOutputFormat,
 ) -> Result<String, String> {
     match format {
-        MachineOutputFormat::Json =>
-            serde_json::to_string_pretty(payload).map_err(|err| err.to_string()),
-        MachineOutputFormat::Toon =>
-            toon_format::encode_default(payload).map_err(|err| err.to_string()),
+        MachineOutputFormat::Json => {
+            serde_json::to_string_pretty(payload).map_err(|err| err.to_string())
+        }
+        MachineOutputFormat::Toon => {
+            toon_format::encode_default(payload).map_err(|err| err.to_string())
+        }
     }
 }
 
-pub fn machine_output_format(
-    as_json: bool,
-    as_toon: bool,
-) -> Option<MachineOutputFormat> {
+pub fn machine_output_format(as_json: bool, as_toon: bool) -> Option<MachineOutputFormat> {
     if as_json {
         Some(MachineOutputFormat::Json)
     } else if as_toon {
@@ -190,8 +177,7 @@ pub fn machine_output_format(
     }
 }
 
-pub fn requested_machine_output_format_from_args() -> Option<MachineOutputFormat>
-{
+pub fn requested_machine_output_format_from_args() -> Option<MachineOutputFormat> {
     machine_output_format(
         std::env::args().any(|arg| arg == "--json"),
         std::env::args().any(|arg| arg == "--toon"),
@@ -217,7 +203,7 @@ mod tests {
         let cli = parse_cli_from(["spec", "--toon", "list"]).unwrap();
 
         match cli.command {
-            SpecCommandCli::List(ListArgs { .. }) => {},
+            SpecCommandCli::List(ListArgs { .. }) => {}
             other => panic!("expected list command, got {other:?}"),
         }
     }
@@ -251,7 +237,7 @@ mod tests {
             }) => {
                 assert_eq!(id, "0386c4d0");
                 assert_eq!(code_workspace_root, Some(PathBuf::from(".")));
-            },
+            }
             other => panic!("expected refs validate command, got {other:?}"),
         }
     }
@@ -274,20 +260,19 @@ mod tests {
                     args.source_workspace_root,
                     Some(PathBuf::from("memory-viewers/memory-api"))
                 );
-            },
+            }
             other => panic!("expected bootstrap command, got {other:?}"),
         }
     }
 
     #[test]
     fn parse_sync_generated_keeps_target_spec_id() {
-        let cli =
-            parse_cli_from(["spec", "sync-generated", "0386c4d0"]).unwrap();
+        let cli = parse_cli_from(["spec", "sync-generated", "0386c4d0"]).unwrap();
 
         match cli.command {
             SpecCommandCli::SyncGenerated(args) => {
                 assert_eq!(args.id, "0386c4d0");
-            },
+            }
             other => panic!("expected sync-generated command, got {other:?}"),
         }
     }

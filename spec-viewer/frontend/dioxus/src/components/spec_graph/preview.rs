@@ -12,8 +12,7 @@ pub(super) fn SpecPreviewSidebar(
     on_close: EventHandler<()>,
     on_view_details: EventHandler<String>,
 ) -> Element {
-    let mut full: Signal<Option<crate::types::SpecFullResponse>> =
-        use_signal(|| None);
+    let mut full: Signal<Option<crate::types::SpecFullResponse>> = use_signal(|| None);
     let mut load_err: Signal<Option<String>> = use_signal(|| None);
 
     let spec_id_load = spec_id.clone();
@@ -90,10 +89,7 @@ pub(super) fn SpecPreviewSidebar(
     }
 }
 
-fn preview_title(
-    spec_id: &str,
-    full: &Option<crate::types::SpecFullResponse>,
-) -> String {
+fn preview_title(spec_id: &str, full: &Option<crate::types::SpecFullResponse>) -> String {
     full.as_ref()
         .and_then(|response| {
             response

@@ -1,28 +1,13 @@
 use dioxus::prelude::*;
-use viewer_api_dioxus::{
-    Layout,
-    Overlay,
-    ThemeSettings,
-};
+use viewer_api_dioxus::{Layout, Overlay, ThemeSettings};
 
-use crate::{
-    sse::use_sse,
-    store::SpecListStore,
-    types::SpecSummary,
-};
+use crate::{sse::use_sse, store::SpecListStore, types::SpecSummary};
 
 use super::{
     super::Route,
-    effects::{
-        persist_store,
-        use_spec_list,
-    },
+    effects::{persist_store, use_spec_list},
     helpers::sidebar_button_state,
-    render::{
-        render_spec_list_content,
-        render_spec_list_header,
-        render_spec_list_sidebar,
-    },
+    render::{render_spec_list_content, render_spec_list_header, render_spec_list_sidebar},
 };
 
 #[component]

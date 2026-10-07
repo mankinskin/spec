@@ -22,10 +22,7 @@ use dioxus::prelude::*;
 use gloo_events::EventListener;
 use serde::Deserialize;
 
-use crate::types::{
-    SpecSummary,
-    SseSpec,
-};
+use crate::types::{SpecSummary, SseSpec};
 
 // ── SSE payload types ─────────────────────────────────────────────────────────
 
@@ -70,9 +67,7 @@ async fn sleep_ms(ms: u32) {
     let promise = js_sys::Promise::new(&mut |resolve, _reject| {
         web_sys::window()
             .expect("no window")
-            .set_timeout_with_callback_and_timeout_and_arguments_0(
-                &resolve, ms as i32,
-            )
+            .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, ms as i32)
             .expect("setTimeout failed");
     });
     let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
@@ -111,12 +106,9 @@ pub fn use_sse(specs: Signal<Vec<SpecSummary>>) {
         let es = match web_sys::EventSource::new(url) {
             Ok(es) => es,
             Err(e) => {
-                tracing::warn!(
-                    "EventSource::new failed for spec stream: {:?}",
-                    e
-                );
+                tracing::warn!("EventSource::new failed for spec stream: {:?}", e);
                 return;
-            },
+            }
         };
 
         // ── spec.updated ──────────────────────────────────────────────────
@@ -125,9 +117,7 @@ pub fn use_sse(specs: Signal<Vec<SpecSummary>>) {
             let data = msg_data(event);
             match serde_json::from_str::<UpdatedPayload>(&data) {
                 Ok(p) => specs_up.with_mut(|v| {
-                    if let Some(existing) =
-                        v.iter_mut().find(|s| s.id == p.spec.id)
-                    {
+                    if let Some(existing) = v.iter_mut().find(|s| s.id == p.spec.id) {
                         existing.state = p.spec.state;
                         if p.spec.title.is_some() {
                             existing.title = p.spec.title;

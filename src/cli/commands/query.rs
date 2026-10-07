@@ -1,26 +1,11 @@
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 
-use memory_kernel::{
-    error::StorageError,
-    model::filesystem::ScanRoot,
-};
+use memory_kernel::{error::StorageError, model::filesystem::ScanRoot};
 use spec_api::SpecStore;
 
-use crate::cli::{
-    AddRootArgs,
-    CliRunError,
-    HealthArgs,
-    ScanArgs,
-    SearchArgs,
-};
+use crate::cli::{AddRootArgs, CliRunError, HealthArgs, ScanArgs, SearchArgs};
 
-pub(crate) fn cmd_search(
-    args: SearchArgs,
-    store: &SpecStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_search(args: SearchArgs, store: &SpecStore) -> Result<Value, CliRunError> {
     let results = store.entity_store().search(&args.query, args.limit)?;
     let items: Vec<Value> = results
         .iter()
@@ -44,10 +29,7 @@ pub(crate) fn cmd_search(
     }))
 }
 
-pub(crate) fn cmd_scan(
-    args: ScanArgs,
-    store: &mut SpecStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_scan(args: ScanArgs, store: &mut SpecStore) -> Result<Value, CliRunError> {
     let report = store.scan(args.force)?;
     Ok(json!({
         "command": "scan",
@@ -59,13 +41,9 @@ pub(crate) fn cmd_scan(
     }))
 }
 
-pub(crate) fn cmd_add_root(
-    args: AddRootArgs,
-    store: &SpecStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_add_root(args: AddRootArgs, store: &SpecStore) -> Result<Value, CliRunError> {
     std::fs::create_dir_all(&args.path).map_err(StorageError::Io)?;
-    let path =
-        std::fs::canonicalize(&args.path).unwrap_or_else(|_| args.path.clone());
+    let path = std::fs::canonicalize(&args.path).unwrap_or_else(|_| args.path.clone());
     let label = args.label.unwrap_or_else(|| {
         path.file_name()
             .and_then(|n| n.to_str())
@@ -110,10 +88,7 @@ mod tests {
     }
 }
 
-pub(crate) fn cmd_health(
-    args: HealthArgs,
-    store: &SpecStore,
-) -> Result<Value, CliRunError> {
+pub(crate) fn cmd_health(args: HealthArgs, store: &SpecStore) -> Result<Value, CliRunError> {
     let report = if args.all {
         store.health_all()?
     } else if let Some(id) = &args.id {
