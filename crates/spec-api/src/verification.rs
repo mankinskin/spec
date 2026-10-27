@@ -77,7 +77,7 @@ pub fn recompute_spec_verified_state(
     feedback_store: Option<&EntityFeedbackStore>,
     spec_id_or_slug: &str,
 ) -> Result<SpecVerificationOutcome, String> {
-    let (_spec, body) = spec_store
+    let (spec, body) = spec_store
         .get_full(spec_id_or_slug)
         .map_err(|e| format!("Spec not found: {e}"))?;
 
@@ -126,9 +126,12 @@ pub fn recompute_spec_verified_state(
         return Ok(SpecVerificationOutcome::Failed { failed_guards });
     }
 
-    spec_store
-        .update(spec_id_or_slug, BTreeMap::new(), Some("verified"))
-        .map_err(|e| format!("Failed to update spec state to verified: {e}"))?;
+    // Idempotent: an already verified spec needs no redundant transition.
+    if spec.state() != Some("verified") {
+        spec_store
+            .update(spec_id_or_slug, BTreeMap::new(), Some("verified"))
+            .map_err(|e| format!("Failed to update spec state to verified: {e}"))?;
+    }
 
     if let Some(store) = feedback_store {
         let workspace = store.workspace_path();
@@ -149,6 +152,7 @@ pub fn recompute_spec_verified_state(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use tempfile::TempDir;
     use test_api::TestStoreConfig;
 
@@ -215,5 +219,36 @@ The verification of this specification contract is gated by:
             }
             other => panic!("expected pending outcome, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn recompute_is_idempotent_for_already_verified_spec() {
+        let body = "# Spec\n\n## Guards\n- `val-alpha`\n";
+        let (_spec_tmp, mut store, id) = spec_store_with_body(body);
+        let (_test_tmp, test_store) = empty_test_store();
+        for state in ["reviewed", "approved", "implemented"] {
+            store
+                .update(&id, BTreeMap::new(), Some(state))
+                .unwrap_or_else(|e| panic!("transition to {state}: {e}"));
+        }
+        let mut execution =
+            test_api::ValidationExecution::passed("exec-1", "val-alpha", chrono::Utc::now());
+        execution.links.spec_ids.push(id.clone());
+        execution.provenance.domain = Some("test".to_string());
+        execution.provenance.operation = Some("run".to_string());
+        execution.provenance.run_id = Some("run-1".to_string());
+        test_store
+            .record_execution(&execution)
+            .expect("record execution");
+
+        let first =
+            recompute_spec_verified_state(&mut store, &test_store, None, &id).expect("first");
+        assert_eq!(first, SpecVerificationOutcome::Verified);
+        assert_eq!(store.get(&id).expect("get").state(), Some("verified"));
+
+        let second =
+            recompute_spec_verified_state(&mut store, &test_store, None, &id).expect("second");
+        assert_eq!(second, SpecVerificationOutcome::Verified);
+        assert_eq!(store.get(&id).expect("get").state(), Some("verified"));
     }
 }
