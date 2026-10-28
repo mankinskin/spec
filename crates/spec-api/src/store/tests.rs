@@ -105,6 +105,21 @@ fn create_get_update_delete_spec() {
 }
 
 #[test]
+fn approved_spec_can_return_to_review_and_be_approved_again() {
+    let (_tmp, mut store) = setup();
+    let spec = make_spec("root/review-again", "Review Again");
+    let id = store.create(&spec, "body", None).unwrap().to_string();
+
+    for state in ["reviewed", "approved", "reviewed", "approved"] {
+        let updated = store
+            .update(&id, BTreeMap::new(), Some(state))
+            .unwrap_or_else(|err| panic!("transition to {state} failed: {err}"));
+        assert_eq!(updated.state(), Some(state));
+        assert_eq!(store.get(&id).unwrap().state(), Some(state));
+    }
+}
+
+#[test]
 fn v2_manifest_requires_explicit_identity_and_round_trips() {
     let (_tmp, mut store) = setup();
     let spec = make_v2_spec("root/v2", "V2", "root-v2");

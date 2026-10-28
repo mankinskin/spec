@@ -61,6 +61,10 @@ to = "cancelled"
 # From approved
 [[transitions]]
 from = "approved"
+to = "reviewed"
+
+[[transitions]]
+from = "approved"
 to = "implemented"
 
 [[transitions]]

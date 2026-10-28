@@ -81,6 +81,14 @@ fn test_specification_schema_transitions_valid() {
 }
 
 #[test]
+fn test_specification_schema_allows_approved_to_reviewed() {
+    let schema = specification_schema();
+    schema
+        .ensure_transition("approved", "reviewed")
+        .expect("approved specs must be allowed to return to review");
+}
+
+#[test]
 fn test_specification_schema_edge_rules() {
     let schema = specification_schema();
     assert!(
