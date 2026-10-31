@@ -30,7 +30,7 @@ Prefer `spec-mcp` and `ticket-mcp` tools when available. Fall back to `./target/
 
 ### Discovery Before Creating
 
-[entity-discovery.instructions.md](../../../../.agents/instructions/workflow/entity-discovery.instructions.md)
+entity-discovery.instructions.md (`../../../../.agents/instructions/workflow/entity-discovery.instructions.md`)
 owns this rule for every store, including which phases it binds, how to record
 coverage, and the three permitted reuse forms. Do not restate it here.
 
@@ -58,7 +58,7 @@ Create the root first, then create each child with:
 spec create --workspace <repo-root> --title "<child-title>" --slug <child-slug> --component <component> --parent <root-id-or-slug>
 ```
 
-Use the [spec-editor hierarchy](../../../.workflow-tools/spec/specs/788e91e4-32d7-4ff5-bf68-485235f8211f/body.md) as the imitable precedent.
+Use the spec-editor hierarchy (`../../../.workflow-tools/spec/specs/788e91e4-32d7-4ff5-bf68-485235f8211f/body.md`) as the imitable precedent.
 
 ### Code-First Structure and Relationship Traceability
 
@@ -97,9 +97,9 @@ required inter-child provider/consumer edges. These use the normal criterion
 artifact, validation, and evidence shape. A parent MUST NOT restate or own a
 child's internal criteria or provider-owned criteria.
 
-Every reference to another spec, ticket, doc, or code file MUST be a clickable markdown link following the [Clickable Reference Policy](../../../../AGENTS.md#clickable-reference-policy) in `AGENTS.md`.
+Every reference to another spec, ticket, doc, or code file MUST be a clickable markdown link following the Clickable Reference Policy (`../../../../AGENTS.md#clickable-reference-policy`) in `AGENTS.md`.
 
-Directed component edges are the durable contract between components and MUST be authored to mirror one-to-one onto the typed edge model: consumer -> provider -> provider criteria. Until the store persists typed edges and `spec health` validates TOML-to-body link parity, record edges in the parent `flowchart TD` map and each child's `## Reading Order` provider links; this parity is review-enforced today and will become health-enforced later by the [Component-Oriented Specification System](../../../.workflow-tools/spec/specs/f1b8f01a-c7da-4a71-97c5-39519a7d7f38/body.md).
+Directed component edges are the durable contract between components and MUST be authored to mirror one-to-one onto the typed edge model: consumer -> provider -> provider criteria. Until the store persists typed edges and `spec health` validates TOML-to-body link parity, record edges in the parent `flowchart TD` map and each child's `## Reading Order` provider links; this parity is review-enforced today and will become health-enforced later by the Component-Oriented Specification System (`../../../.workflow-tools/spec/specs/f1b8f01a-c7da-4a71-97c5-39519a7d7f38/body.md`).
 
 Omit a mandated section that would only hold a placeholder. A `## Target Code
 Location` or `## Examples` section that names no real path, type, or behavior
