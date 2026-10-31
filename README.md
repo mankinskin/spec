@@ -1,4 +1,4 @@
-Back to [memory-api/README.md](../../../README.md).
+Back to `../../../README.md`.
 
 # spec
 
