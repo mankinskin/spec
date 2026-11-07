@@ -6,7 +6,7 @@ use serde_json::Value;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SpecRefInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Workspace root or .spec store path. Read tools accept omission/default for the server store; spec_delete requires an explicit path and rejects omitted/empty/default/..; use . for server cwd.
     #[serde(default)]
     pub workspace: Option<String>,
     /// Spec UUID, prefix, or slug.
@@ -39,7 +39,7 @@ pub struct CreateSpecInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetSpecInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Optional workspace root or .spec store path; omit/default uses the server store.
     #[serde(default)]
     pub workspace: Option<String>,
     /// Spec UUID, prefix, or slug.
@@ -51,7 +51,7 @@ pub struct GetSpecInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct UpdateSpecInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Required explicit workspace root or .spec store path; omitted/empty/default/.. are rejected. Use . for server cwd.
     #[serde(default)]
     pub workspace: Option<String>,
     /// Spec UUID, prefix, or slug.
@@ -75,7 +75,7 @@ pub struct UpdateSpecInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListSpecsInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Optional workspace root or .spec store path; omit/default uses the server store.
     #[serde(default)]
     pub workspace: Option<String>,
     /// Filter by field=value predicates.
@@ -88,7 +88,7 @@ pub struct ListSpecsInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SearchSpecsInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Optional workspace root or .spec store path; omit/default uses the server store.
     #[serde(default)]
     pub workspace: Option<String>,
     /// Full-text search query.
@@ -104,7 +104,7 @@ fn default_search_limit() -> usize {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct TreeInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Optional workspace root or .spec store path; omit/default uses the server store.
     #[serde(default)]
     pub workspace: Option<String>,
     /// Root spec ID or slug (omit for all roots).
@@ -114,7 +114,7 @@ pub struct TreeInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct HealthInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Optional workspace root or .spec store path; omit/default uses the server store.
     #[serde(default)]
     pub workspace: Option<String>,
     /// Spec UUID, prefix, or slug (omit with all=true for all specs).
@@ -127,12 +127,12 @@ pub struct HealthInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RefsValidateInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Optional workspace root or .spec store path; omit/default uses the server store.
     #[serde(default)]
     pub workspace: Option<String>,
     /// Spec UUID, prefix, or slug.
     pub id: String,
-    /// Workspace root for resolving file paths.
+    /// Filesystem base for code_ref paths, not a store selector. Default . means server cwd.
     #[serde(default = "default_workspace_root")]
     pub workspace_root: String,
 }
@@ -143,7 +143,7 @@ fn default_workspace_root() -> String {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SectionAddInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Required explicit workspace root or .spec store path; omitted/empty/default/.. are rejected. Use . for server cwd.
     #[serde(default)]
     pub workspace: Option<String>,
     /// Spec UUID, prefix, or slug.
@@ -156,7 +156,7 @@ pub struct SectionAddInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SectionRefInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Workspace root or .spec store path. Reads accept omission/default for the server store; section deletion requires explicit selection and rejects omitted/empty/default/..; use . for server cwd.
     #[serde(default)]
     pub workspace: Option<String>,
     /// Spec UUID, prefix, or slug.
@@ -167,7 +167,7 @@ pub struct SectionRefInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ScanInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Required explicit workspace root or .spec store path; omitted/empty/default/.. are rejected. Use . for server cwd.
     #[serde(default)]
     pub workspace: Option<String>,
     /// Force full reindex.
@@ -177,7 +177,7 @@ pub struct ScanInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct AddRootInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Required explicit workspace root or .spec store path; omitted/empty/default/.. are rejected. Use . for server cwd.
     #[serde(default)]
     pub workspace: Option<String>,
     /// Directory path to register as a scan root.
@@ -189,7 +189,7 @@ pub struct AddRootInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SpecMoveInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Source workspace root or .spec store path. Preflight accepts omission/default for the server store; apply requires explicit selection and rejects omitted/empty/default/..; use . for server cwd.
     #[serde(default)]
     pub workspace: Option<String>,
     /// Spec UUID, prefix, or slug to move when `ids` is absent.
@@ -204,9 +204,9 @@ pub struct SpecMoveInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SpecMoveJournalInput {
-    /// Optional workspace selector (`default`, workspace root, or .spec store path).
+    /// Required explicit source workspace root or .spec store path; omitted/empty/default/.. are rejected. Use . for server cwd.
     #[serde(default)]
     pub workspace: Option<String>,
-    /// Move journal UUID.
+    /// Move journal UUID returned as journal_id by spec_move_apply, not a spec ID.
     pub id: String,
 }

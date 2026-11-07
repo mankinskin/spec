@@ -17,6 +17,8 @@ use tokio::sync::Mutex;
 mod query;
 mod sections;
 mod types;
+#[cfg(test)]
+mod contract_tests;
 pub use self::types::*;
 // ── Server ───────────────────────────────────────────────────────────────────
 struct WorkspaceResolution {
@@ -364,7 +366,7 @@ impl SpecServer {
 impl SpecServer {
     #[tool(
         name = "spec_create",
-        description = "Create a new spec with title, slug, component, and optional body."
+        description = "Create a spec in an explicit workspace (state draft), returning its id. Duplicate/invalid slugs or unresolved parent references fail. Additional fields cannot override slug/title/component."
     )]
     pub async fn spec_create(
         &self,
@@ -374,7 +376,7 @@ impl SpecServer {
     }
     #[tool(
         name = "spec_get",
-        description = "Get a spec by ID or slug, optionally with body and sections."
+        description = "Get a spec by UUID, prefix or slug: id, created_at, fields, code_refs; full=true adds body/sections. Omit workspace or use default for the server store. Opens/initializes and rescans the store before reading."
     )]
     pub async fn spec_get(
         &self,
@@ -384,7 +386,7 @@ impl SpecServer {
     }
     #[tool(
         name = "spec_update",
-        description = "Update a spec's fields, state, or body. Omit untouched keys; the response returns only changed or directly relevant fields."
+        description = "Update fields/state/body in an explicit workspace; at least one change is required. Omit untouched keys. fields key=value strings override field_map JSON keys. Body is replaced before field/state changes, so later errors can leave a partial update; empty body requires force_body. Returns changed/relevant fields."
     )]
     pub async fn spec_update(
         &self,
@@ -392,7 +394,7 @@ impl SpecServer {
     ) -> Result<CallToolResult, McpError> {
         self.spec_update_tool(input).await
     }
-    #[tool(name = "spec_delete", description = "Permanently delete a spec.")]
+    #[tool(name = "spec_delete", description = "Permanently delete a spec by UUID, prefix or slug. Requires an explicit workspace; omitted/default selectors are rejected.")]
     pub async fn spec_delete(
         &self,
         Parameters(input): Parameters<SpecRefInput>,
@@ -401,7 +403,7 @@ impl SpecServer {
     }
     #[tool(
         name = "spec_list",
-        description = "List specs with optional field=value filters."
+        description = "List specs (id, slug, title, state, component) with exact string field=value filters; malformed predicates without = are ignored. Omitted limit is unlimited. Omit workspace/default selects the server store; opens/initializes and rescans before reading."
     )]
     pub async fn spec_list(
         &self,
@@ -409,7 +411,7 @@ impl SpecServer {
     ) -> Result<CallToolResult, McpError> {
         self.spec_list_tool(input).await
     }
-    #[tool(name = "spec_search", description = "Full-text search across specs.")]
+    #[tool(name = "spec_search", description = "Full-text search specs, returning id/title/state/type/score/snippet. Default limit 20. Omit workspace/default selects the server store; opens/initializes and rescans before reading.")]
     pub async fn spec_search(
         &self,
         Parameters(input): Parameters<SearchSpecsInput>,
@@ -418,7 +420,7 @@ impl SpecServer {
     }
     #[tool(
         name = "spec_tree",
-        description = "Get hierarchy subtree for a spec, or list all root specs."
+        description = "Get root plus descendants for a spec id; omit id to list parentless roots with children_count. Omit workspace/default selects the server store; opens/initializes and rescans before reading."
     )]
     pub async fn spec_tree(
         &self,
@@ -428,7 +430,7 @@ impl SpecServer {
     }
     #[tool(
         name = "spec_health",
-        description = "Run health checks on specs (completeness of required fields)."
+        description = "Check required-field completeness: provide id or all=true (all takes precedence). Omit workspace/default selects the server store; opens/initializes and rescans before reading."
     )]
     pub async fn spec_health(
         &self,
@@ -438,7 +440,7 @@ impl SpecServer {
     }
     #[tool(
         name = "spec_refs_validate",
-        description = "Validate code references for a spec (check file existence and line ranges)."
+        description = "Validate code_ref file existence/line ranges. workspace_root is the filesystem reference base (default server cwd), not the workspace store selector. Omit workspace/default selects the server store; opens/initializes and rescans before reading. Returns valid and per-reference results."
     )]
     pub async fn spec_refs_validate(
         &self,
@@ -446,7 +448,7 @@ impl SpecServer {
     ) -> Result<CallToolResult, McpError> {
         self.spec_refs_validate_tool(input).await
     }
-    #[tool(name = "spec_section_add", description = "Add a section to a spec.")]
+    #[tool(name = "spec_section_add", description = "Write a named spec section in an explicit workspace; omitted/default workspace selectors are rejected.")]
     pub async fn spec_section_add(
         &self,
         Parameters(input): Parameters<SectionAddInput>,
@@ -469,7 +471,7 @@ impl SpecServer {
     }
     #[tool(
         name = "spec_section_delete",
-        description = "Delete a section from a spec."
+        description = "Delete a named spec section in an explicit workspace. A missing section is a successful no-op; omitted/default workspace selectors are rejected."
     )]
     pub async fn spec_section_delete(
         &self,
@@ -477,7 +479,7 @@ impl SpecServer {
     ) -> Result<CallToolResult, McpError> {
         self.spec_section_delete_tool(input).await
     }
-    #[tool(name = "spec_scan", description = "Scan and reindex all spec roots.")]
+    #[tool(name = "spec_scan", description = "Scan/reindex all spec roots in an explicit workspace; force performs full reindex. Returns integrated/pruned/diagnostics_count. Omitted/default workspace selectors are rejected.")]
     pub async fn spec_scan(
         &self,
         Parameters(input): Parameters<ScanInput>,
@@ -486,7 +488,7 @@ impl SpecServer {
     }
     #[tool(
         name = "spec_add_root",
-        description = "Register a directory as a scan root for specs."
+        description = "Register a directory as a scan root in an explicit workspace; does not scan it. Omitted label uses the final path segment, or specs. Omitted/default workspace selectors are rejected."
     )]
     pub async fn spec_add_root(
         &self,
@@ -496,7 +498,7 @@ impl SpecServer {
     }
     #[tool(
         name = "spec_move_preflight",
-        description = "Read-only preflight plan for moving a spec to another workspace store."
+        description = "Preflight a move to explicit to_workspace_root; ids takes precedence over id. Omit workspace/default uses the server source store. Store opening may initialize/reindex; no entity move occurs. Inspect supported/blockers even when status=ok; multi-id plans use status=blocked when unsupported."
     )]
     pub async fn spec_move_preflight(
         &self,
@@ -538,7 +540,7 @@ impl SpecServer {
     }
     #[tool(
         name = "spec_move_apply",
-        description = "Execute a supported spec move to another workspace store."
+        description = "Re-plan and execute a supported spec move, mutating source/destination stores. Explicit workspace and destination required; ids takes precedence over id. Blocked preflight fails. Retain returned journal_id/phase for resume or rollback; do not blindly replay apply."
     )]
     pub async fn spec_move_apply(
         &self,
@@ -594,7 +596,7 @@ impl SpecServer {
     }
     #[tool(
         name = "spec_move_resume",
-        description = "Resume an interrupted spec move from a journal id."
+        description = "Resume an interrupted move in an explicit workspace. id is the move journal UUID returned by spec_move_apply, not a spec ID. Returns journal_id/phase."
     )]
     pub async fn spec_move_resume(
         &self,
@@ -612,7 +614,7 @@ impl SpecServer {
     }
     #[tool(
         name = "spec_move_rollback",
-        description = "Roll back a spec move from a journal id."
+        description = "Roll back a move in an explicit workspace. id is the move journal UUID returned by spec_move_apply, not a spec ID. Returns journal_id/phase."
     )]
     pub async fn spec_move_rollback(
         &self,
