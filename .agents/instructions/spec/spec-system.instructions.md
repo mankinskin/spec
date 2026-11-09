@@ -11,13 +11,13 @@ Applies when creating, updating, reviewing, or validating specifications through
 
 Specs own What: observable properties and acceptance, not execution sequencing.
 Tickets own How and Missions own Why and the route. Link the
-[source-to-outcome fidelity owner](../../../../.agents/instructions/workflow/roadmap-authoring.instructions.md#source-to-outcome-fidelity)
+[source-to-outcome fidelity owner](https://github.com/mankinskin/workflow-tools/blob/main/.agents/instructions/workflow/roadmap-authoring.instructions.md#source-to-outcome-fidelity)
 for immutable source/intent, receipt-bound exclusions, both terminal reviews
 and the three scope pillars; do not paste a parallel success contract.
 An explicit documentation/design-only request may use deterministic artifact
 checks; a design document cannot substitute for requested working behavior.
 Declare compatible evidence and reference the
-[provider-owned handover/evidence contract](../../../../mission/docs/provider-evidence.md)
+[provider-owned handover/evidence contract](https://github.com/mankinskin/workflow-tools/blob/main/mission/docs/provider-evidence.md)
 for artifact bytes/hash/schema/roots and exact producer/consumer checks.
 
 - Prefer one clear owning spec per behavior or requirement slice.
